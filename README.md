@@ -5,7 +5,7 @@ Ein leichtgewichtiges Tool zur Erfassung von Home Office- und Bürozeiten, das d
 ## ✨ Features
 
 * **100% Lokal:** Läuft als einzelne HTML-Datei im Browser.
-* **Datenspeicherung:** Speichert direkt in eine lokale JSON-Datei (`bbk_daten.json`) über die moderne File System Access API.
+* **Datenspeicherung:** Speichert direkt in eine lokale JSON-Datei (`daten.json`) über die moderne File System Access API.
 * **Intelligente Zeiterfassung:**
     * Automatische Berechnung der Netto-Arbeitszeit.
     * Spezielle Pausen-Logik (Pausenkorridor ab 6h / 9h).
