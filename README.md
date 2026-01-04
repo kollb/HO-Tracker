@@ -1,4 +1,4 @@
-# BBk Home Office Tracker (Standalone)
+# Home Office Tracker (Standalone)
 
 Ein leichtgewichtiges Tool zur Erfassung von Home Office- und Bürozeiten, das direkt im Browser läuft. Es benötigt **keine Installation** (kein Python, kein Docker) und speichert Daten lokal auf deinem PC.
 
