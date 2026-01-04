@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <title>BBk Tracker (File Mode)</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, minimal-ui">
+  
+  <link href="https://fonts.googleapis.com/css?family=Roboto:100,300,400,500,700,900" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/@mdi/font@6.x/css/materialdesignicons.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/vuetify@3.x/dist/vuetify.min.css" rel="stylesheet">
+  <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/vuetify@3.x/dist/vuetify.min.js"></script>
+  
+  <style>
+    [v-cloak] { display: none !important; }
+    body { font-family: 'Roboto', sans-serif; }
+    .v-field__input { padding-top: 6px !important; padding-bottom: 6px !important; min-height: 32px !important; }
+    
+    .status-bar { 
+        border-bottom: 1px solid #ddd; 
+        background: white; 
+        position: sticky; top: 48px; z-index: 10;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+    .stat-label { font-size: 0.75rem; color: #757575; text-transform: uppercase; letter-spacing: 0.5px; }
+    .stat-value { font-weight: 700; font-size: 1rem; }
+
+    .day-row { transition: background-color 0.2s; }
+    .day-row:hover { background-color: #f0f7ff !important; }
+    .weekend, .holiday-row { background-color: #f8f9fa; color: #888; }
+    .is-today { border-left: 4px solid #1976D2; background-color: #e3f2fd !important; }
+    .week-summary-row { background-color: #eee; color: #444; height: 36px !important; }
+    .week-summary-row td { font-weight: bold; font-size: 0.85rem; padding-top: 0 !important; padding-bottom: 0 !important; }
+
+    /* Kalender Styles */
+    .calendar-wrapper { display: grid; grid-template-columns: repeat(7, 1fr) 60px; gap: 6px; padding: 10px; }
+    .cal-header { text-align: center; font-weight: bold; color: #757575; font-size: 0.85rem; padding-bottom: 5px; text-transform: uppercase; }
+    .cal-cell {
+        background: white; border: 1px solid #e0e0e0; border-radius: 8px; min-height: 110px; padding: 6px;
+        display: flex; flex-direction: column; justify-content: space-between; cursor: pointer; transition: all 0.2s; position: relative;
+    }
+    .cal-cell:hover { border-color: #1976D2; box-shadow: 0 2px 8px rgba(0,0,0,0.1); z-index: 2; }
+    .cal-cell.is-holiday { background-color: #fff0f0; border-color: #ffcdd2; }
+    .cal-cell.is-weekend { background-color: #fafafa; }
+    .cal-cell.is-today { border: 2px solid #1976D2; background-color: #e3f2fd; }
+    .cal-date { font-weight: bold; font-size: 1rem; margin-bottom: 4px; }
+    .cal-holiday-name { font-size: 0.7rem; color: #d32f2f; line-height: 1.1; margin-bottom: 4px; font-weight: 500;}
+    .cal-content { flex-grow: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; }
+    .cal-week-sum { display: flex; align-items: center; justify-content: center; text-align: center; font-size: 0.75rem; color: #757575; writing-mode: vertical-rl; transform: rotate(180deg); background: #f5f5f5; border-radius: 4px; }
+
+    .status-home { background-color: #e8f5e9; border-color: #c8e6c9; }
+    .status-office { background-color: #fff8e1; border-color: #ffe082; }
+    .status-sick { background-color: #ffebee; }
+    .status-vacation { background-color: #e0f7fa; }
+    
+    /* File Status Indicator */
+    .file-status { font-size: 0.75rem; margin-right: 10px; color: #666; display: flex; align-items: center; gap: 5px; }
+    .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+    .dot.green { background-color: #4caf50; }
+    .dot.red { background-color: #f44336; }
+    .dot.orange { background-color: #ff9800; }
+  </style>
+</head>
+<body>
+  
+  <div id="app" v-cloak>
+    <v-app style="background-color: #f8f9fa;">
+      <v-app-bar color="primary" density="compact" elevation="1">
+        <v-app-bar-title class="font-weight-bold">BBk Tracker</v-app-bar-title>
+        <v-spacer></v-spacer>
+        
+        <div class="file-status" v-if="fileHandle">
+            <span class="dot green"></span>
+            <span>Verbunden: [[ fileName ]]</span>
+        </div>
+        <div class="file-status" v-else>
+            <span class="dot red"></span>
+            <span>Nur Browser-Speicher</span>
+        </div>
+
+        <v-tooltip text="Datei öffnen / verbinden" location="bottom">
+            <template v-slot:activator="{ props }">
+                 <v-btn v-bind="props" icon="mdi-folder-open" size="small" @click="openFile" class="mr-1"></v-btn>
+            </template>
+        </v-tooltip>
+        
+        <v-tooltip text="Jetzt speichern" location="bottom">
+            <template v-slot:activator="{ props }">
+                 <v-btn v-bind="props" icon="mdi-content-save" size="small" @click="saveToFile" :disabled="!fileHandle" :color="unsavedChanges ? 'warning' : 'white'" class="mr-3"></v-btn>
+            </template>
+        </v-tooltip>
+
+        <v-divider vertical class="mx-2 my-3" color="white" thickness="2"></v-divider>
+
+        <v-btn-toggle v-model="viewMode" density="compact" mandatory class="mr-3" variant="outlined" color="white" divided>
+            <v-btn value="list" icon="mdi-format-list-bulleted" size="small"></v-btn>
+            <v-btn value="calendar" icon="mdi-calendar-month" size="small"></v-btn>
+        </v-btn-toggle>
+        <v-btn icon @click="dialogSettings = true"><v-icon>mdi-cog</v-icon></v-btn>
+      </v-app-bar>
+
+      <v-main>
+        <v-container fluid class="status-bar py-3 px-4 mb-3">
+            <v-row align="center" no-gutters>
+                <v-col cols="3" class="d-flex align-center">
+                    <v-btn icon variant="text" size="small" @click="changeMonth(-1)"><v-icon>mdi-chevron-left</v-icon></v-btn>
+                    <div class="font-weight-bold mx-2 text-center" style="min-width: 120px; line-height: 1.2;">
+                        <div>[[ currentMonthName ]]</div><div class="text-caption text-grey">[[ currentYear ]]</div>
+                    </div>
+                    <v-btn icon variant="text" size="small" @click="changeMonth(1)"><v-icon>mdi-chevron-right</v-icon></v-btn>
+                </v-col>
+                <v-col cols="5" class="d-flex justify-center px-4">
+                    <div class="d-flex" style="gap: 24px;">
+                        <div class="text-center">
+                            <div class="stat-label">Gesamt</div><div class="stat-value">[[ formatNum(stats.total_work_made) ]] h</div>
+                            <div class="text-caption text-green-darken-2" style="font-size: 0.7rem;">Ø [[ formatNum(stats.avg_per_week) ]] / Wo.</div>
+                        </div>
+                        <div class="text-center">
+                            <div class="stat-label">Büro</div><div class="stat-value text-amber-darken-4">[[ formatNum(stats.total_office_made) ]] h</div>
+                        </div>
+                    </div>
+                </v-col>
+                <v-col cols="4" class="pl-4">
+                    <div class="d-flex justify-space-between mb-1">
+                        <span class="stat-label">Home Office</span>
+                        <span class="text-caption font-weight-bold" :class="getQuotaColorText">[[ formatNum(stats.total_ho_made) ]] / [[ formatNum(stats.total_ho_allowed) ]]</span>
+                    </div>
+                    <v-progress-linear :model-value="quotaPercentage" :color="getQuotaColor" height="8" rounded></v-progress-linear>
+                </v-col>
+            </v-row>
+        </v-container>
+
+        <v-container>
+            <v-card elevation="0" border min-height="500">
+                <v-table density="compact" v-if="viewMode === 'list'">
+                    <template v-slot:default>
+                        <thead>
+                            <tr style="background-color: #fafafa;">
+                                <th class="text-left font-weight-bold">Datum</th>
+                                <th class="text-left font-weight-bold">Status</th>
+                                <th class="text-left font-weight-bold">Start</th>
+                                <th class="text-left font-weight-bold">Ende</th>
+                                <th class="text-left font-weight-bold">Stunden</th>
+                                <th style="width: 50px;"></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <template v-for="item in items" :key="item.date">
+                                <tr v-if="item.row_type === 'day'" :class="{'weekend': isWeekend(item), 'holiday-row': item.is_holiday, 'is-today': isToday(item.date), 'day-row': true}">
+                                    <td class="py-2">
+                                        <div class="font-weight-medium">[[ item.day_num ]]. [[ getGermanDay(item.weekday_index) ]]</div>
+                                        <div v-if="item.is_holiday" class="text-caption text-red-lighten-1 font-weight-bold">[[ item.holiday_name ]]</div>
+                                    </td>
+                                    <td style="min-width: 160px;">
+                                        <v-select v-model="item.type" :items="types" item-title="title" item-value="value" variant="plain" density="compact" hide-details class="mt-0 pt-0" @update:model-value="onTypeChange(item)"></v-select>
+                                    </td>
+                                    <td>
+                                        <v-text-field v-if="needsTimeInput(item.type)" v-model="item.start" placeholder="08:00" variant="underlined" density="compact" hide-details @input="onTypeTime(item)" @change="saveEntry(item)"></v-text-field>
+                                        <span v-else-if="item.type == 'x'" class="text-caption text-grey">Automatisch</span>
+                                    </td>
+                                    <td>
+                                        <v-text-field v-if="needsTimeInput(item.type)" v-model="item.end" placeholder="16:00" variant="underlined" density="compact" hide-details @input="onTypeTime(item)" @change="saveEntry(item)"></v-text-field>
+                                        <span v-else-if="item.type == 'x'" class="text-caption text-grey">Ganzer Tag</span>
+                                    </td>
+                                    <td><v-chip size="small" :color="getChipColor(item)" v-if="item.net > 0 || item.type === 'x'" variant="flat">[[ formatNum(item.net) ]] h</v-chip></td>
+                                    <td><v-btn icon size="x-small" variant="text" color="grey" @click="clearEntry(item)" v-if="item.type"><v-icon>mdi-close</v-icon></v-btn></td>
+                                </tr>
+                                <tr v-else class="week-summary-row">
+                                    <td colspan="4" class="text-right pr-4">KW [[ item.iso_week ]] GESAMT:</td>
+                                    <td colspan="2"><span :class="getWeeklyColor(item.sum, item.target)">[[ formatNum(item.sum) ]] / [[ formatNum(item.target) ]] h</span><v-icon v-if="item.sum >= item.target" color="green" size="small" class="ml-1">mdi-check-circle</v-icon></td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </template>
+                </v-table>
+
+                <div v-else class="pa-2">
+                    <div class="calendar-wrapper">
+                        <div class="cal-header">Mo</div><div class="cal-header">Di</div><div class="cal-header">Mi</div>
+                        <div class="cal-header">Do</div><div class="cal-header">Fr</div><div class="cal-header text-red">Sa</div>
+                        <div class="cal-header text-red">So</div><div class="cal-header" style="font-size: 0.7rem">KW</div>
+                        <div v-for="n in paddingDays" :key="'pad-'+n" style="background: transparent;"></div>
+                        <template v-for="item in items" :key="item.date">
+                            <div v-if="item.row_type === 'day'" class="cal-cell"
+                                 :class="{'is-holiday': item.is_holiday, 'is-weekend': isWeekend(item), 'is-today': isToday(item.date),
+                                    'status-home': item.type === 'home' || item.type === 'x', 'status-office': item.type === 'office',
+                                    'status-sick': item.type === 'sick', 'status-vacation': item.type === 'vacation'}"
+                                 @click="openEditDialog(item)">
+                                <div class="d-flex justify-space-between align-start">
+                                    <span class="cal-date">[[ item.day_num ]]</span>
+                                    <v-icon v-if="item.type" :color="getStatusIconColor(item.type)" size="small">[[ getStatusIcon(item.type) ]]</v-icon>
+                                </div>
+                                <div v-if="item.is_holiday" class="cal-holiday-name">[[ item.holiday_name ]]</div>
+                                <div class="cal-content">
+                                    <div v-if="item.type" class="font-weight-bold text-caption text-uppercase" :style="{color: getStatusIconColor(item.type)}">[[ getTypeName(item.type) ]]</div>
+                                    <div v-if="item.net > 0 || item.type === 'x'" class="text-caption font-weight-bold">[[ formatNum(item.net) ]] h</div>
+                                </div>
+                            </div>
+                            <div v-else class="cal-week-sum" :title="'KW ' + item.iso_week"><span :class="getWeeklyColor(item.sum, item.target)" class="font-weight-bold">[[ formatNum(item.sum) ]]</span></div>
+                        </template>
+                    </div>
+                </div>
+            </v-card>
+        </v-container>
+      </v-main>
+
+      <v-dialog v-model="dialogEditDay" max-width="400">
+        <v-card v-if="editingDay">
+            <v-card-title class="bg-primary text-white">[[ editingDay.day_num ]]. [[ currentMonthName ]] - Status</v-card-title>
+            <v-card-text class="pt-4">
+                <v-select v-model="editingDay.type" :items="types" label="Status" item-title="title" item-value="value" variant="outlined" density="comfortable" @update:model-value="onTypeChange(editingDay)"></v-select>
+                <div v-if="needsTimeInput(editingDay.type)">
+                    <v-row><v-col cols="6"><v-text-field v-model="editingDay.start" label="Start" type="time" variant="outlined" density="compact" @change="saveEntry(editingDay)"></v-text-field></v-col>
+                    <v-col cols="6"><v-text-field v-model="editingDay.end" label="Ende" type="time" variant="outlined" density="compact" @change="saveEntry(editingDay)"></v-text-field></v-col></v-row>
+                    <div class="text-center text-h6 mt-2" v-if="editingDay.net > 0">[[ formatNum(editingDay.net) ]] Stunden</div>
+                </div>
+            </v-card-text>
+            <v-card-actions><v-btn color="error" variant="text" @click="clearEntry(editingDay); dialogEditDay = false">Löschen</v-btn><v-spacer></v-spacer><v-btn color="primary" @click="saveEntry(editingDay); dialogEditDay = false">Speichern</v-btn></v-card-actions>
+        </v-card>
+      </v-dialog>
+
+      <v-dialog v-model="dialogSettings" max-width="600">
+        <v-card>
+          <v-card-title>Einstellungen</v-card-title>
+          <v-card-text>
+            <v-row>
+              <v-col cols="12"><h3 class="text-subtitle-1 font-weight-bold mb-2">Allgemein</h3></v-col>
+              <v-col cols="4"><v-text-field v-model.number="settings.weekly_hours" label="Wochenstd." type="number" density="compact" variant="outlined"></v-text-field></v-col>
+              <v-col cols="4"><v-text-field v-model.number="settings.workdays_per_week" label="Arbeitstage/W" type="number" density="compact" variant="outlined"></v-text-field></v-col>
+              <v-col cols="4"><v-text-field v-model.number="settings.ho_quota_percent" label="HO Quote %" type="number" density="compact" variant="outlined"></v-text-field></v-col>
+            </v-row>
+            <v-divider class="my-3"></v-divider>
+            <h3 class="text-subtitle-1 font-weight-bold mb-2">Eigene Feiertage</h3>
+            <v-table density="compact" class="mb-3" v-if="customHolidays.length > 0">
+              <thead><tr><th>Datum</th><th>Name</th><th style="width: 40px"></th></tr></thead>
+              <tbody><tr v-for="(h, i) in customHolidays" :key="i"><td>[[ h.date ]]</td><td>[[ h.name ]]</td><td><v-btn icon size="x-small" variant="text" color="red" @click="deleteCustomHoliday(i)"><v-icon>mdi-delete</v-icon></v-btn></td></tr></tbody>
+            </v-table>
+            <v-row align="center">
+              <v-col cols="5"><v-text-field v-model="newCustomHoliday.date" label="Datum" density="compact" variant="outlined" hide-details type="date"></v-text-field></v-col>
+              <v-col cols="5"><v-text-field v-model="newCustomHoliday.name" label="Bez." density="compact" variant="outlined" hide-details></v-text-field></v-col>
+              <v-col cols="2"><v-btn color="primary" icon size="small" @click="addCustomHoliday"><v-icon>mdi-plus</v-icon></v-btn></v-col>
+            </v-row>
+          </v-card-text>
+          <v-card-actions><v-spacer></v-spacer><v-btn color="primary" @click="saveSettings">Schließen</v-btn></v-card-actions>
+        </v-card>
+      </v-dialog>
+
+    </v-app>
+  </div>
+
+  <script>
+    const { createApp } = Vue
+    const { createVuetify } = Vuetify
+
+    // -------------------------------------------------------------------
+    // DATENBANK LOGIK (LocalStorage + File System API)
+    // -------------------------------------------------------------------
+    
+    // Wir halten die Daten im Speicher (RAM) und syncen sie bei Bedarf
+    const Store = {
+        data: { settings:{}, entries:{}, customHolidays:[] },
+        
+        // Initial LocalStorage Load (als Fallback)
+        init() {
+            const ls = localStorage.getItem('bbk_data');
+            if(ls) {
+                try { this.data = JSON.parse(ls); } catch(e){}
+            }
+            if(!this.data.settings) this.data.settings = {};
+            if(!this.data.entries) this.data.entries = {};
+            if(!this.data.customHolidays) this.data.customHolidays = [];
+        },
+        
+        get() { return this.data; },
+        
+        set(newData) {
+            this.data = newData;
+            // Immer auch in LocalStorage als "Schattenkopie"
+            localStorage.setItem('bbk_data', JSON.stringify(this.data));
+        },
+
+        getSettings() { return { weekly_hours: 39, workdays_per_week: 5, ho_quota_percent: 60, ...this.data.settings }; },
+        saveSettings(s) { this.data.settings = s; this.persist(); },
+        getEntries() { return this.data.entries || {}; },
+        saveEntry(date, entryData) { this.data.entries[date] = entryData; this.persist(); },
+        deleteEntry(date) { delete this.data.entries[date]; this.persist(); },
+        getCustomHolidays() { return this.data.customHolidays || []; },
+        saveCustomHolidays(list) { this.data.customHolidays = list; this.persist(); },
+
+        // Callback, um die App zu informieren, dass gespeichert werden soll
+        onPersist: null,
+        persist() {
+            // LocalStorage sync
+            localStorage.setItem('bbk_data', JSON.stringify(this.data));
+            // Trigger File Save if available
+            if(this.onPersist) this.onPersist();
+        }
+    };
+    
+    Store.init();
+
+    // -------------------------------------------------------------------
+    // HELFER FUNKTIONEN
+    // -------------------------------------------------------------------
+
+    function calculateNetHours(start, end) {
+        if(!start || !end) return 0.0;
+        const toMin = t => { const p = t.split(':'); return parseInt(p[0])*60 + parseInt(p[1]); };
+        let duration = toMin(end) - toMin(start);
+        if(duration < 0) return 0.0;
+        // Pause logic: >9h = 45min, >6h = 30min
+        if(duration > 9*60) duration -= 45;
+        else if(duration > 6*60) duration -= 30;
+        return Math.max(0, duration / 60.0);
+    }
+
+    function getHolidayName(dateObj) {
+        const d = dateObj.getDate(), m = dateObj.getMonth() + 1, y = dateObj.getFullYear();
+        const ymd = dateObj.toISOString().split('T')[0];
+
+        if(m===12 && d===24) return "Heiligabend";
+        if(m===12 && d===31) return "Silvester";
+        
+        const userHols = Store.getCustomHolidays();
+        const found = userHols.find(h => h.date === ymd);
+        if(found) return found.name;
+
+        if(m===1 && d===1) return "Neujahr";
+        if(m===5 && d===1) return "Tag der Arbeit";
+        if(m===10 && d===3) return "Tag der Deutschen Einheit";
+        if(m===12 && d===25) return "1. Weihnachtstag";
+        if(m===12 && d===26) return "2. Weihnachtstag";
+
+        const a=y%19, b=Math.floor(y/100), c=y%100, dd=Math.floor(b/4), e=b%4, f=Math.floor((b+8)/25), g=Math.floor((b-f+1)/3), h=(19*a+b-dd-g+15)%30, i=Math.floor(c/4), k=c%4, l=(32+2*e+2*i-h-k)%7, m_easter=Math.floor((a+11*h+22*l)/451);
+        const monthE = Math.floor((h+l-7*m_easter+114)/31);
+        const dayE = ((h+l-7*m_easter+114)%31)+1; 
+        const easterDate = new Date(y, monthE-1, dayE);
+
+        const addDays = (base, days) => { const n = new Date(base); n.setDate(n.getDate() + days); return n; };
+        const isSame = (d1, d2) => d1.getDate()===d2.getDate() && d1.getMonth()===d2.getMonth();
+        
+        if(isSame(dateObj, addDays(easterDate, -2))) return "Karfreitag";
+        if(isSame(dateObj, addDays(easterDate, 1))) return "Ostermontag";
+        if(isSame(dateObj, addDays(easterDate, 39))) return "Christi Himmelfahrt";
+        if(isSame(dateObj, addDays(easterDate, 50))) return "Pfingstmontag";
+        if(isSame(dateObj, addDays(easterDate, 60))) return "Fronleichnam"; 
+
+        return "";
+    }
+
+    function getISOWeek(d) {
+        const date = new Date(d.getTime());
+        date.setHours(0, 0, 0, 0);
+        date.setDate(date.getDate() + 3 - (date.getDay() + 6) % 7);
+        const week1 = new Date(date.getFullYear(), 0, 4);
+        return 1 + Math.round(((date.getTime() - week1.getTime()) / 86400000 - 3 + (week1.getDay() + 6) % 7) / 7);
+    }
+
+    // -------------------------------------------------------------------
+    // VUE APP
+    // -------------------------------------------------------------------
+
+    const app = createApp({
+      data() {
+        return {
+          viewMode: 'list',
+          currentDate: new Date(),
+          items: [], 
+          stats: { total_ho_made: 0, total_ho_allowed: 1, total_office_made: 0, total_work_made: 0, avg_per_week: 0 }, 
+          settings: { weekly_hours: 39, workdays_per_week: 5, ho_quota_percent: 60 },
+          dialogSettings: false, dialogEditDay: false,
+          editingDay: null,
+          customHolidays: [], newCustomHoliday: { date: '', name: '' },
+          
+          // File System Access Vars
+          fileHandle: null,
+          fileName: '',
+          unsavedChanges: false,
+
+          types: [
+            { title: 'Home Office', value: 'home' }, { title: 'Büro', value: 'office' },
+            { title: 'Geplanter HO-Tag', value: 'x' }, { title: 'Krank', value: 'sick' },
+            { title: 'Urlaub', value: 'vacation' }, { title: 'Gleitzeit', value: 'glz' },
+            { title: 'Dienstreise', value: 'dr' }, { title: 'Leer', value: '' }
+          ]
+        }
+      },
+      computed: {
+        currentYear() { return this.currentDate.getFullYear() },
+        currentMonth() { return this.currentDate.getMonth() + 1 }, 
+        currentMonthName() { return this.currentDate.toLocaleString('de-DE', { month: 'long' }) },
+        quotaPercentage() { if(!this.stats.total_ho_allowed) return 0; return (this.stats.total_ho_made / this.stats.total_ho_allowed) * 100; },
+        getQuotaColor() { return this.quotaPercentage > 100 ? 'red' : (this.quotaPercentage > 85 ? 'orange' : 'blue-darken-1'); },
+        getQuotaColorText() { return this.quotaPercentage > 100 ? 'text-red' : 'text-blue-darken-2'; },
+        paddingDays() {
+            if(!this.items || this.items.length === 0) return 0;
+            const firstDay = this.items.find(i => i.row_type === 'day');
+            return firstDay ? firstDay.weekday_index : 0;
+        }
+      },
+      mounted() { 
+          // Store Callback verbinden
+          Store.onPersist = () => {
+              this.loadData(); // UI aktualisieren
+              if(this.fileHandle) this.saveToFile(); // Auto-Save wenn Datei verbunden
+              else this.unsavedChanges = true;
+          };
+          this.loadData(); 
+      },
+      methods: {
+        formatNum(val) { return val ? val.toFixed(2).replace('.', ',') : '0,00'; },
+        getGermanDay(index) { return ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'][index] || ''; },
+        isWeekend(day) { return day.weekday_index >= 5; },
+        isToday(dateStr) { return dateStr === new Date().toISOString().split('T')[0]; },
+        needsTimeInput(type) { return ['home', 'office', '', null].includes(type); },
+        getStatusIcon(type) { const map = { 'home': 'mdi-home', 'office': 'mdi-office-building', 'x': 'mdi-calendar-clock', 'sick': 'mdi-emoticon-sick', 'vacation': 'mdi-beach', 'dr': 'mdi-car' }; return map[type] || ''; },
+        getStatusIconColor(type) { const map = { 'home': 'green', 'office': 'amber-darken-4', 'x': 'blue', 'sick': 'red', 'vacation': 'purple' }; return map[type] || 'grey'; },
+        getTypeName(val) { const found = this.types.find(t => t.value === val); return found ? found.title : ''; },
+        getWeeklyColor(current, target) { if (!current) return 'text-grey'; return current >= target ? 'text-green-darken-2' : 'text-orange-darken-2'; },
+        getChipColor(day) { if (day.type === 'x') return 'blue-lighten-4'; if (day.type === 'office') return 'amber-lighten-4'; if (day.type === 'home' && day.net > 0) return 'green-lighten-4'; return 'grey'; },
+
+        openEditDialog(day) { this.editingDay = day; this.dialogEditDay = true; },
+        onTypeChange(day) {
+            if(['home', 'office'].includes(day.type)) {
+                if(!day.start) day.start = '08:00';
+                if(!day.end) day.end = '16:18'; 
+            }
+            this.saveEntry(day);
+        },
+        onTypeTime(day) { if(!day.type) day.type = 'home'; },
+        changeMonth(delta) { this.currentDate = new Date(this.currentDate.setMonth(this.currentDate.getMonth() + delta)); this.loadData(); },
+
+        // --- CORE DATA LOADING ---
+        loadData() {
+            this.settings = Store.getSettings();
+            this.customHolidays = Store.getCustomHolidays();
+            const entries = Store.getEntries();
+            
+            const year = this.currentYear;
+            const month = this.currentMonth;
+            const daysInMonth = new Date(year, month, 0).getDate();
+            
+            let total_ho = 0, total_office = 0, workdays = 0;
+            let current_week_sum = 0;
+            const daily_target = this.settings.weekly_hours / this.settings.workdays_per_week;
+            
+            this.items = [];
+
+            for(let d=1; d<=daysInMonth; d++) {
+                const dateObj = new Date(year, month-1, d);
+                // Locale Fix
+                const dateStr = new Date(dateObj.getTime() - (dateObj.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
+                const isoWeek = getISOWeek(dateObj);
+                const holidayName = getHolidayName(dateObj);
+                const isHoliday = !!holidayName;
+                const weekday = (dateObj.getDay() + 6) % 7; 
+
+                if(!isHoliday && weekday < 5) workdays++;
+
+                const entry = entries[dateStr] || {};
+                const type = entry.type || "";
+                let net = 0;
+
+                if(type === 'x') net = daily_target;
+                else if(['home','office'].includes(type)) net = calculateNetHours(entry.start, entry.end);
+                
+                net = parseFloat(net.toFixed(2)); 
+
+                if(['home', 'x'].includes(type)) total_ho += net;
+                if(type === 'office') total_office += net;
+                current_week_sum += net;
+
+                this.items.push({
+                    row_type: 'day', date: dateStr, day_num: d, weekday_index: weekday, iso_week: isoWeek,
+                    is_holiday: isHoliday, holiday_name: holidayName,
+                    type: type, start: entry.start||'', end: entry.end||'', net: net
+                });
+
+                if(weekday === 6 || d === daysInMonth) {
+                    this.items.push({
+                        row_type: 'summary', iso_week: isoWeek, sum: parseFloat(current_week_sum.toFixed(2)),
+                        target: this.settings.weekly_hours, date: 'sum-'+isoWeek
+                    });
+                    current_week_sum = 0;
+                }
+            }
+
+            const max_ho = workdays * daily_target * (this.settings.ho_quota_percent / 100);
+            const total_work = total_ho + total_office;
+            const week_count = this.items.filter(i => i.row_type === 'summary').length;
+
+            this.stats = {
+                total_ho_made: total_ho, total_ho_allowed: max_ho,
+                total_office_made: total_office, total_work_made: total_work,
+                avg_per_week: week_count ? (total_work / week_count) : 0
+            };
+        },
+
+        saveEntry(day) {
+            if(day.type === "") Store.deleteEntry(day.date);
+            else Store.saveEntry(day.date, { type: day.type, start: day.start, end: day.end });
+        },
+        clearEntry(day) { day.type = ""; day.start = ""; day.end = ""; this.saveEntry(day); },
+        saveSettings() { Store.saveSettings(this.settings); Store.saveCustomHolidays(this.customHolidays); this.dialogSettings = false; },
+        addCustomHoliday() {
+            if(!this.newCustomHoliday.date || !this.newCustomHoliday.name) return;
+            this.customHolidays.push({...this.newCustomHoliday});
+            this.newCustomHoliday = {date:'', name:''};
+        },
+        deleteCustomHoliday(index) { this.customHolidays.splice(index, 1); },
+
+        // --- FILE SYSTEM API LOGIC ---
+        async openFile() {
+            try {
+                // Feature Detection
+                if (!window.showOpenFilePicker) {
+                    alert("Dein Browser unterstützt diese Funktion nicht (File System Access API). Bitte nutze Chrome oder Edge.");
+                    return;
+                }
+                const [handle] = await window.showOpenFilePicker({
+                    types: [{ description: 'JSON Dateien', accept: {'application/json': ['.json']} }],
+                    multiple: false
+                });
+                this.fileHandle = handle;
+                this.fileName = handle.name;
+                
+                const file = await handle.getFile();
+                const text = await file.text();
+                
+                // Try parse
+                let json = {};
+                try { 
+                    json = JSON.parse(text); 
+                    Store.set(json); // In App laden
+                    this.loadData();
+                    this.unsavedChanges = false;
+                } catch(e) {
+                    // Datei wahrscheinlich leer -> wir initialisieren sie
+                    Store.init(); 
+                    this.saveToFile();
+                }
+            } catch(e) {
+                console.error("Abbruch oder Fehler:", e);
+            }
+        },
+        
+        async saveToFile() {
+            if(!this.fileHandle) return;
+            try {
+                // Erstelle Stream
+                const writable = await this.fileHandle.createWritable();
+                const content = JSON.stringify(Store.get(), null, 2);
+                await writable.write(content);
+                await writable.close();
+                this.unsavedChanges = false;
+            } catch(e) {
+                console.error("Fehler beim Speichern:", e);
+                alert("Fehler beim Speichern in die Datei.");
+            }
+        }
+      }
+    });
+
+    app.config.compilerOptions.delimiters = ['[[', ']]'];
+    app.use(createVuetify());
+    app.mount('#app');
+  </script>
+</body>
+</html>
