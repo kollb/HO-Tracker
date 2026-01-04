@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-  <title>BBk Tracker (File Mode)</title>
+  <title>BBk Tracker (Smart File)</title>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, minimal-ui">
   
@@ -32,7 +32,6 @@
     .week-summary-row { background-color: #eee; color: #444; height: 36px !important; }
     .week-summary-row td { font-weight: bold; font-size: 0.85rem; padding-top: 0 !important; padding-bottom: 0 !important; }
 
-    /* Kalender Styles */
     .calendar-wrapper { display: grid; grid-template-columns: repeat(7, 1fr) 60px; gap: 6px; padding: 10px; }
     .cal-header { text-align: center; font-weight: bold; color: #757575; font-size: 0.85rem; padding-bottom: 5px; text-transform: uppercase; }
     .cal-cell {
@@ -53,7 +52,6 @@
     .status-sick { background-color: #ffebee; }
     .status-vacation { background-color: #e0f7fa; }
     
-    /* File Status Indicator */
     .file-status { font-size: 0.75rem; margin-right: 10px; color: #666; display: flex; align-items: center; gap: 5px; }
     .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
     .dot.green { background-color: #4caf50; }
@@ -71,20 +69,25 @@
         
         <div class="file-status" v-if="fileHandle">
             <span class="dot green"></span>
-            <span>Verbunden: [[ fileName ]]</span>
+            <span>Datei: [[ fileName ]]</span>
+        </div>
+        <div v-else-if="storedHandleName" class="file-status">
+            <span class="dot orange"></span>
+            <span>Letzte Datei: [[ storedHandleName ]]</span>
+            <v-btn size="x-small" color="white" variant="outlined" class="ml-2" @click="restoreFileConnection">Verbinden</v-btn>
         </div>
         <div class="file-status" v-else>
             <span class="dot red"></span>
-            <span>Nur Browser-Speicher</span>
+            <span>Lokal</span>
         </div>
 
-        <v-tooltip text="Datei öffnen / verbinden" location="bottom">
+        <v-tooltip text="Datei öffnen / wechseln" location="bottom">
             <template v-slot:activator="{ props }">
                  <v-btn v-bind="props" icon="mdi-folder-open" size="small" @click="openFile" class="mr-1"></v-btn>
             </template>
         </v-tooltip>
         
-        <v-tooltip text="Jetzt speichern" location="bottom">
+        <v-tooltip text="Speichern" location="bottom">
             <template v-slot:activator="{ props }">
                  <v-btn v-bind="props" icon="mdi-content-save" size="small" @click="saveToFile" :disabled="!fileHandle" :color="unsavedChanges ? 'warning' : 'white'" class="mr-3"></v-btn>
             </template>
@@ -210,8 +213,14 @@
             <v-card-text class="pt-4">
                 <v-select v-model="editingDay.type" :items="types" label="Status" item-title="title" item-value="value" variant="outlined" density="comfortable" @update:model-value="onTypeChange(editingDay)"></v-select>
                 <div v-if="needsTimeInput(editingDay.type)">
-                    <v-row><v-col cols="6"><v-text-field v-model="editingDay.start" label="Start" type="time" variant="outlined" density="compact" @change="saveEntry(editingDay)"></v-text-field></v-col>
-                    <v-col cols="6"><v-text-field v-model="editingDay.end" label="Ende" type="time" variant="outlined" density="compact" @change="saveEntry(editingDay)"></v-text-field></v-col></v-row>
+                    <v-row>
+                        <v-col cols="6">
+                            <v-text-field v-model="editingDay.start" label="Start" placeholder="08:00" variant="outlined" density="compact" @change="saveEntry(editingDay)"></v-text-field>
+                        </v-col>
+                        <v-col cols="6">
+                            <v-text-field v-model="editingDay.end" label="Ende" placeholder="16:00" variant="outlined" density="compact" @change="saveEntry(editingDay)"></v-text-field>
+                        </v-col>
+                    </v-row>
                     <div class="text-center text-h6 mt-2" v-if="editingDay.net > 0">[[ formatNum(editingDay.net) ]] Stunden</div>
                 </div>
             </v-card-text>
@@ -244,7 +253,6 @@
           <v-card-actions><v-spacer></v-spacer><v-btn color="primary" @click="saveSettings">Schließen</v-btn></v-card-actions>
         </v-card>
       </v-dialog>
-
     </v-app>
   </div>
 
@@ -253,32 +261,54 @@
     const { createVuetify } = Vuetify
 
     // -------------------------------------------------------------------
-    // DATENBANK LOGIK (LocalStorage + File System API)
+    // INDEXED DB HELPER
     // -------------------------------------------------------------------
+    const IDB_NAME = 'bbk_tracker_db';
+    const IDB_STORE = 'handles';
     
-    // Wir halten die Daten im Speicher (RAM) und syncen sie bei Bedarf
+    async function idbSet(key, val) {
+        return new Promise((resolve, reject) => {
+            const req = indexedDB.open(IDB_NAME, 1);
+            req.onupgradeneeded = e => e.target.result.createObjectStore(IDB_STORE);
+            req.onsuccess = e => {
+                const db = e.target.result;
+                const tx = db.transaction(IDB_STORE, 'readwrite');
+                tx.objectStore(IDB_STORE).put(val, key);
+                tx.oncomplete = () => resolve();
+                tx.onerror = () => reject(tx.error);
+            };
+        });
+    }
+
+    async function idbGet(key) {
+        return new Promise((resolve, reject) => {
+            const req = indexedDB.open(IDB_NAME, 1);
+            req.onupgradeneeded = e => e.target.result.createObjectStore(IDB_STORE);
+            req.onsuccess = e => {
+                const db = e.target.result;
+                const tx = db.transaction(IDB_STORE, 'readonly');
+                const getReq = tx.objectStore(IDB_STORE).get(key);
+                getReq.onsuccess = () => resolve(getReq.result);
+                getReq.onerror = () => reject(getReq.error);
+            };
+        });
+    }
+
+    // -------------------------------------------------------------------
+    // DATA STORE
+    // -------------------------------------------------------------------
     const Store = {
         data: { settings:{}, entries:{}, customHolidays:[] },
-        
-        // Initial LocalStorage Load (als Fallback)
         init() {
             const ls = localStorage.getItem('bbk_data');
-            if(ls) {
-                try { this.data = JSON.parse(ls); } catch(e){}
-            }
+            if(ls) try { this.data = JSON.parse(ls); } catch(e){}
             if(!this.data.settings) this.data.settings = {};
             if(!this.data.entries) this.data.entries = {};
             if(!this.data.customHolidays) this.data.customHolidays = [];
         },
-        
         get() { return this.data; },
+        set(newData) { this.data = newData; localStorage.setItem('bbk_data', JSON.stringify(this.data)); },
         
-        set(newData) {
-            this.data = newData;
-            // Immer auch in LocalStorage als "Schattenkopie"
-            localStorage.setItem('bbk_data', JSON.stringify(this.data));
-        },
-
         getSettings() { return { weekly_hours: 39, workdays_per_week: 5, ho_quota_percent: 60, ...this.data.settings }; },
         saveSettings(s) { this.data.settings = s; this.persist(); },
         getEntries() { return this.data.entries || {}; },
@@ -287,96 +317,126 @@
         getCustomHolidays() { return this.data.customHolidays || []; },
         saveCustomHolidays(list) { this.data.customHolidays = list; this.persist(); },
 
-        // Callback, um die App zu informieren, dass gespeichert werden soll
         onPersist: null,
         persist() {
-            // LocalStorage sync
             localStorage.setItem('bbk_data', JSON.stringify(this.data));
-            // Trigger File Save if available
             if(this.onPersist) this.onPersist();
         }
     };
-    
     Store.init();
 
     // -------------------------------------------------------------------
-    // HELFER FUNKTIONEN
+    // LOGIC FUNCTIONS
     // -------------------------------------------------------------------
+    
+    // Normalisiert Eingaben wie "0615", "6.15", "615" zu "06:15"
+    function normalizeTimeInput(t) {
+        if(!t) return "";
+        t = t.toString().trim();
+        // Wenn schon richtiges Format HH:MM
+        if (t.match(/^\d{2}:\d{2}$/)) return t;
+        
+        let h=0, m=0;
+        
+        if (t.includes(':')) {
+            const p = t.split(':');
+            h = parseInt(p[0]); m = parseInt(p[1]);
+        } else if (t.includes('.')) {
+            const p = t.split('.');
+            h = parseInt(p[0]); m = parseInt(p[1]);
+        } else if (t.length === 4 && !isNaN(t)) {
+            // 0615
+            h = parseInt(t.substring(0, 2)); m = parseInt(t.substring(2, 4));
+        } else if (t.length === 3 && !isNaN(t)) {
+            // 615
+            h = parseInt(t.substring(0, 1)); m = parseInt(t.substring(1, 3));
+        } else if (t.length <= 2 && !isNaN(t)) {
+            // 8 -> 08:00
+            h = parseInt(t); m = 0;
+        } else {
+            return t; // Unbekanntes Format, zurückgeben
+        }
+        
+        if(isNaN(h)) h = 0;
+        if(isNaN(m)) m = 0;
+        
+        const hh = (h < 10 ? "0" : "") + h;
+        const mm = (m < 10 ? "0" : "") + m;
+        return `${hh}:${mm}`;
+    }
 
     function calculateNetHours(start, end) {
+        // Hier nutzen wir dieselbe Parsing-Logik, nur direkt zu Minuten
+        const parseToHours = (t) => {
+            if(!t) return 0.0;
+            // Wir nutzen normalize, dann split
+            const norm = normalizeTimeInput(t);
+            if(!norm.includes(':')) return 0.0;
+            const p = norm.split(':');
+            return parseInt(p[0]) + parseInt(p[1])/60.0;
+        }
+
         if(!start || !end) return 0.0;
-        const toMin = t => { const p = t.split(':'); return parseInt(p[0])*60 + parseInt(p[1]); };
-        let duration = toMin(end) - toMin(start);
-        if(duration < 0) return 0.0;
-        // Pause logic: >9h = 45min, >6h = 30min
-        if(duration > 9*60) duration -= 45;
-        else if(duration > 6*60) duration -= 30;
-        return Math.max(0, duration / 60.0);
+        
+        let t_start = parseToHours(start);
+        let t_end = parseToHours(end);
+        let hours_worked = t_end - t_start;
+
+        if(hours_worked < 0) return 0.0;
+
+        // Exakte Python-Logik (Pausenkorridor)
+        let net_hours = 0.0;
+        if (hours_worked <= 6.0) net_hours = hours_worked;
+        else if (hours_worked < 6.5) net_hours = 6.0; 
+        else if (hours_worked < 9.5) net_hours = hours_worked - 0.5;
+        else if (hours_worked < 9.75) net_hours = 9.0;
+        else net_hours = hours_worked - 0.75;
+
+        return parseFloat(net_hours.toFixed(2));
     }
 
     function getHolidayName(dateObj) {
         const d = dateObj.getDate(), m = dateObj.getMonth() + 1, y = dateObj.getFullYear();
-        const ymd = dateObj.toISOString().split('T')[0];
-
+        const ymd = new Date(dateObj.getTime() - (dateObj.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
         if(m===12 && d===24) return "Heiligabend";
         if(m===12 && d===31) return "Silvester";
-        
-        const userHols = Store.getCustomHolidays();
-        const found = userHols.find(h => h.date === ymd);
+        const found = Store.getCustomHolidays().find(h => h.date === ymd);
         if(found) return found.name;
-
         if(m===1 && d===1) return "Neujahr";
         if(m===5 && d===1) return "Tag der Arbeit";
         if(m===10 && d===3) return "Tag der Deutschen Einheit";
         if(m===12 && d===25) return "1. Weihnachtstag";
         if(m===12 && d===26) return "2. Weihnachtstag";
-
         const a=y%19, b=Math.floor(y/100), c=y%100, dd=Math.floor(b/4), e=b%4, f=Math.floor((b+8)/25), g=Math.floor((b-f+1)/3), h=(19*a+b-dd-g+15)%30, i=Math.floor(c/4), k=c%4, l=(32+2*e+2*i-h-k)%7, m_easter=Math.floor((a+11*h+22*l)/451);
-        const monthE = Math.floor((h+l-7*m_easter+114)/31);
-        const dayE = ((h+l-7*m_easter+114)%31)+1; 
+        const monthE = Math.floor((h+l-7*m_easter+114)/31), dayE = ((h+l-7*m_easter+114)%31)+1; 
         const easterDate = new Date(y, monthE-1, dayE);
-
         const addDays = (base, days) => { const n = new Date(base); n.setDate(n.getDate() + days); return n; };
         const isSame = (d1, d2) => d1.getDate()===d2.getDate() && d1.getMonth()===d2.getMonth();
-        
         if(isSame(dateObj, addDays(easterDate, -2))) return "Karfreitag";
         if(isSame(dateObj, addDays(easterDate, 1))) return "Ostermontag";
         if(isSame(dateObj, addDays(easterDate, 39))) return "Christi Himmelfahrt";
         if(isSame(dateObj, addDays(easterDate, 50))) return "Pfingstmontag";
         if(isSame(dateObj, addDays(easterDate, 60))) return "Fronleichnam"; 
-
         return "";
     }
-
     function getISOWeek(d) {
-        const date = new Date(d.getTime());
-        date.setHours(0, 0, 0, 0);
-        date.setDate(date.getDate() + 3 - (date.getDay() + 6) % 7);
-        const week1 = new Date(date.getFullYear(), 0, 4);
-        return 1 + Math.round(((date.getTime() - week1.getTime()) / 86400000 - 3 + (week1.getDay() + 6) % 7) / 7);
+        const date = new Date(d.getTime()); date.setHours(0, 0, 0, 0); date.setDate(date.getDate() + 3 - (date.getDay() + 6) % 7);
+        const week1 = new Date(date.getFullYear(), 0, 4); return 1 + Math.round(((date.getTime() - week1.getTime()) / 86400000 - 3 + (week1.getDay() + 6) % 7) / 7);
     }
 
     // -------------------------------------------------------------------
     // VUE APP
     // -------------------------------------------------------------------
-
     const app = createApp({
       data() {
         return {
-          viewMode: 'list',
-          currentDate: new Date(),
-          items: [], 
+          viewMode: 'list', currentDate: new Date(), items: [], 
           stats: { total_ho_made: 0, total_ho_allowed: 1, total_office_made: 0, total_work_made: 0, avg_per_week: 0 }, 
           settings: { weekly_hours: 39, workdays_per_week: 5, ho_quota_percent: 60 },
-          dialogSettings: false, dialogEditDay: false,
-          editingDay: null,
+          dialogSettings: false, dialogEditDay: false, editingDay: null,
           customHolidays: [], newCustomHoliday: { date: '', name: '' },
           
-          // File System Access Vars
-          fileHandle: null,
-          fileName: '',
-          unsavedChanges: false,
-
+          fileHandle: null, fileName: '', storedHandleName: '', unsavedChanges: false,
           types: [
             { title: 'Home Office', value: 'home' }, { title: 'Büro', value: 'office' },
             { title: 'Geplanter HO-Tag', value: 'x' }, { title: 'Krank', value: 'sick' },
@@ -392,20 +452,12 @@
         quotaPercentage() { if(!this.stats.total_ho_allowed) return 0; return (this.stats.total_ho_made / this.stats.total_ho_allowed) * 100; },
         getQuotaColor() { return this.quotaPercentage > 100 ? 'red' : (this.quotaPercentage > 85 ? 'orange' : 'blue-darken-1'); },
         getQuotaColorText() { return this.quotaPercentage > 100 ? 'text-red' : 'text-blue-darken-2'; },
-        paddingDays() {
-            if(!this.items || this.items.length === 0) return 0;
-            const firstDay = this.items.find(i => i.row_type === 'day');
-            return firstDay ? firstDay.weekday_index : 0;
-        }
+        paddingDays() { if(!this.items || this.items.length === 0) return 0; const firstDay = this.items.find(i => i.row_type === 'day'); return firstDay ? firstDay.weekday_index : 0; }
       },
       mounted() { 
-          // Store Callback verbinden
-          Store.onPersist = () => {
-              this.loadData(); // UI aktualisieren
-              if(this.fileHandle) this.saveToFile(); // Auto-Save wenn Datei verbunden
-              else this.unsavedChanges = true;
-          };
+          Store.onPersist = () => { this.loadData(); if(this.fileHandle) this.saveToFile(); else this.unsavedChanges = true; };
           this.loadData(); 
+          this.checkForStoredHandle();
       },
       methods: {
         formatNum(val) { return val ? val.toFixed(2).replace('.', ',') : '0,00'; },
@@ -418,149 +470,115 @@
         getTypeName(val) { const found = this.types.find(t => t.value === val); return found ? found.title : ''; },
         getWeeklyColor(current, target) { if (!current) return 'text-grey'; return current >= target ? 'text-green-darken-2' : 'text-orange-darken-2'; },
         getChipColor(day) { if (day.type === 'x') return 'blue-lighten-4'; if (day.type === 'office') return 'amber-lighten-4'; if (day.type === 'home' && day.net > 0) return 'green-lighten-4'; return 'grey'; },
-
+        
         openEditDialog(day) { this.editingDay = day; this.dialogEditDay = true; },
-        onTypeChange(day) {
-            if(['home', 'office'].includes(day.type)) {
-                if(!day.start) day.start = '08:00';
-                if(!day.end) day.end = '16:18'; 
-            }
-            this.saveEntry(day);
-        },
+        onTypeChange(day) { if(['home', 'office'].includes(day.type)) { if(!day.start) day.start = '08:00'; if(!day.end) day.end = '16:18'; } this.saveEntry(day); },
         onTypeTime(day) { if(!day.type) day.type = 'home'; },
         changeMonth(delta) { this.currentDate = new Date(this.currentDate.setMonth(this.currentDate.getMonth() + delta)); this.loadData(); },
 
-        // --- CORE DATA LOADING ---
         loadData() {
             this.settings = Store.getSettings();
             this.customHolidays = Store.getCustomHolidays();
             const entries = Store.getEntries();
-            
-            const year = this.currentYear;
-            const month = this.currentMonth;
+            const year = this.currentYear, month = this.currentMonth;
             const daysInMonth = new Date(year, month, 0).getDate();
-            
-            let total_ho = 0, total_office = 0, workdays = 0;
-            let current_week_sum = 0;
+            let total_ho=0, total_office=0, workdays=0, current_week_sum=0;
             const daily_target = this.settings.weekly_hours / this.settings.workdays_per_week;
-            
             this.items = [];
 
             for(let d=1; d<=daysInMonth; d++) {
                 const dateObj = new Date(year, month-1, d);
-                // Locale Fix
                 const dateStr = new Date(dateObj.getTime() - (dateObj.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
                 const isoWeek = getISOWeek(dateObj);
                 const holidayName = getHolidayName(dateObj);
                 const isHoliday = !!holidayName;
                 const weekday = (dateObj.getDay() + 6) % 7; 
-
                 if(!isHoliday && weekday < 5) workdays++;
-
                 const entry = entries[dateStr] || {};
                 const type = entry.type || "";
+                
+                // Normalisieren beim Laden nicht zwingend, aber Berechnung muss stimmen
                 let net = 0;
-
                 if(type === 'x') net = daily_target;
                 else if(['home','office'].includes(type)) net = calculateNetHours(entry.start, entry.end);
-                
                 net = parseFloat(net.toFixed(2)); 
-
+                
                 if(['home', 'x'].includes(type)) total_ho += net;
                 if(type === 'office') total_office += net;
                 current_week_sum += net;
-
-                this.items.push({
-                    row_type: 'day', date: dateStr, day_num: d, weekday_index: weekday, iso_week: isoWeek,
-                    is_holiday: isHoliday, holiday_name: holidayName,
-                    type: type, start: entry.start||'', end: entry.end||'', net: net
-                });
-
+                this.items.push({ row_type: 'day', date: dateStr, day_num: d, weekday_index: weekday, iso_week: isoWeek, is_holiday: isHoliday, holiday_name: holidayName, type: type, start: entry.start||'', end: entry.end||'', net: net });
                 if(weekday === 6 || d === daysInMonth) {
-                    this.items.push({
-                        row_type: 'summary', iso_week: isoWeek, sum: parseFloat(current_week_sum.toFixed(2)),
-                        target: this.settings.weekly_hours, date: 'sum-'+isoWeek
-                    });
+                    this.items.push({ row_type: 'summary', iso_week: isoWeek, sum: parseFloat(current_week_sum.toFixed(2)), target: this.settings.weekly_hours, date: 'sum-'+isoWeek });
                     current_week_sum = 0;
                 }
             }
-
             const max_ho = workdays * daily_target * (this.settings.ho_quota_percent / 100);
             const total_work = total_ho + total_office;
             const week_count = this.items.filter(i => i.row_type === 'summary').length;
-
-            this.stats = {
-                total_ho_made: total_ho, total_ho_allowed: max_ho,
-                total_office_made: total_office, total_work_made: total_work,
-                avg_per_week: week_count ? (total_work / week_count) : 0
-            };
+            this.stats = { total_ho_made: total_ho, total_ho_allowed: max_ho, total_office_made: total_office, total_work_made: total_work, avg_per_week: week_count ? (total_work / week_count) : 0 };
         },
+        saveEntry(day) { 
+            // Normalisierung VOR dem Speichern
+            if(day.start) day.start = normalizeTimeInput(day.start);
+            if(day.end) day.end = normalizeTimeInput(day.end);
 
-        saveEntry(day) {
-            if(day.type === "") Store.deleteEntry(day.date);
-            else Store.saveEntry(day.date, { type: day.type, start: day.start, end: day.end });
+            if(day.type === "") Store.deleteEntry(day.date); 
+            else Store.saveEntry(day.date, { type: day.type, start: day.start, end: day.end }); 
         },
         clearEntry(day) { day.type = ""; day.start = ""; day.end = ""; this.saveEntry(day); },
         saveSettings() { Store.saveSettings(this.settings); Store.saveCustomHolidays(this.customHolidays); this.dialogSettings = false; },
-        addCustomHoliday() {
-            if(!this.newCustomHoliday.date || !this.newCustomHoliday.name) return;
-            this.customHolidays.push({...this.newCustomHoliday});
-            this.newCustomHoliday = {date:'', name:''};
-        },
+        addCustomHoliday() { if(!this.newCustomHoliday.date || !this.newCustomHoliday.name) return; this.customHolidays.push({...this.newCustomHoliday}); this.newCustomHoliday = {date:'', name:''}; },
         deleteCustomHoliday(index) { this.customHolidays.splice(index, 1); },
 
-        // --- FILE SYSTEM API LOGIC ---
+        async checkForStoredHandle() {
+            try {
+                const handle = await idbGet('fileHandle');
+                if(handle) { this.storedHandleName = handle.name; }
+            } catch(e) { console.error(e); }
+        },
+        async restoreFileConnection() {
+            try {
+                const handle = await idbGet('fileHandle');
+                if(!handle) return;
+                const opts = { mode: 'readwrite' };
+                if ((await handle.queryPermission(opts)) === 'granted' || (await handle.requestPermission(opts)) === 'granted') {
+                     this.fileHandle = handle;
+                     this.fileName = handle.name;
+                     await this.loadFileContent();
+                }
+            } catch(e) { console.error("Restore failed", e); alert("Konnte Verbindung nicht wiederherstellen."); }
+        },
         async openFile() {
             try {
-                // Feature Detection
-                if (!window.showOpenFilePicker) {
-                    alert("Dein Browser unterstützt diese Funktion nicht (File System Access API). Bitte nutze Chrome oder Edge.");
-                    return;
-                }
-                const [handle] = await window.showOpenFilePicker({
-                    types: [{ description: 'JSON Dateien', accept: {'application/json': ['.json']} }],
-                    multiple: false
-                });
+                if (!window.showOpenFilePicker) { alert("Browser unterstützt FileSystemAccess nicht."); return; }
+                const [handle] = await window.showOpenFilePicker({ types: [{ description: 'JSON', accept: {'application/json': ['.json']} }], multiple: false });
                 this.fileHandle = handle;
                 this.fileName = handle.name;
-                
-                const file = await handle.getFile();
-                const text = await file.text();
-                
-                // Try parse
-                let json = {};
-                try { 
-                    json = JSON.parse(text); 
-                    Store.set(json); // In App laden
-                    this.loadData();
-                    this.unsavedChanges = false;
-                } catch(e) {
-                    // Datei wahrscheinlich leer -> wir initialisieren sie
-                    Store.init(); 
-                    this.saveToFile();
-                }
-            } catch(e) {
-                console.error("Abbruch oder Fehler:", e);
-            }
+                await idbSet('fileHandle', handle);
+                this.storedHandleName = handle.name;
+                await this.loadFileContent();
+            } catch(e) {}
         },
-        
+        async loadFileContent() {
+             const file = await this.fileHandle.getFile();
+             const text = await file.text();
+             try { 
+                 const json = JSON.parse(text); 
+                 Store.set(json); 
+                 this.loadData();
+             } catch(e) { Store.init(); this.saveToFile(); }
+        },
         async saveToFile() {
             if(!this.fileHandle) return;
             try {
-                // Erstelle Stream
                 const writable = await this.fileHandle.createWritable();
-                const content = JSON.stringify(Store.get(), null, 2);
-                await writable.write(content);
+                await writable.write(JSON.stringify(Store.get(), null, 2));
                 await writable.close();
                 this.unsavedChanges = false;
-            } catch(e) {
-                console.error("Fehler beim Speichern:", e);
-                alert("Fehler beim Speichern in die Datei.");
-            }
+            } catch(e) { alert("Fehler beim Speichern"); }
         }
       }
     });
-
     app.config.compilerOptions.delimiters = ['[[', ']]'];
     app.use(createVuetify());
     app.mount('#app');
