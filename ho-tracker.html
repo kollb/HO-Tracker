@@ -4,7 +4,6 @@
   <title>Home Office Tracker</title>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, minimal-ui">
-  
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22%231976D2%22><path d=%22M10,20V14H14V20H19V12H22L12,3L2,12H5V20H10Z%22/></svg>">
   
   <link href="https://fonts.googleapis.com/css?family=Roboto:100,300,400,500,700,900" rel="stylesheet">
@@ -18,11 +17,9 @@
     body { font-family: 'Roboto', sans-serif; }
     .v-field__input { padding-top: 6px !important; padding-bottom: 6px !important; min-height: 32px !important; }
     
-    /* FIX: Hintergrundfarbe hinzugefügt */
+    /* Sticky Header mit Background Fix */
     .status-bar { 
-        position: sticky; 
-        top: 48px; 
-        z-index: 10;
+        position: sticky; top: 48px; z-index: 10;
         border-bottom: 1px solid rgba(128,128,128, 0.2);
         background: rgb(var(--v-theme-surface));
     }
@@ -34,7 +31,8 @@
     
     .weekend, .holiday-row { background-color: rgba(128,128,128, 0.05); opacity: 0.8; }
     .is-today { border-left: 4px solid #1976D2; background-color: rgba(25, 118, 210, 0.1) !important; }
-    
+    .short-day-row { background-color: rgba(255, 152, 0, 0.05); } 
+
     .week-summary-row { background-color: rgba(128,128,128, 0.1); height: 36px !important; }
     .week-summary-row td { font-weight: bold; font-size: 0.85rem; padding-top: 0 !important; padding-bottom: 0 !important; }
 
@@ -46,11 +44,13 @@
     }
     .cal-cell:hover { border-color: #1976D2; box-shadow: 0 2px 8px rgba(0,0,0,0.2); z-index: 2; }
     .cal-cell.is-holiday { background-color: rgba(244, 67, 54, 0.05); border-color: rgba(244, 67, 54, 0.2); }
+    .cal-cell.is-short-day { background-color: rgba(255, 152, 0, 0.05); border-color: rgba(255, 152, 0, 0.3); }
     .cal-cell.is-weekend { background-color: rgba(128,128,128, 0.03); }
     .cal-cell.is-today { border: 2px solid #1976D2; background-color: rgba(25, 118, 210, 0.1); }
     
     .cal-date { font-weight: bold; font-size: 1rem; margin-bottom: 4px; }
     .cal-holiday-name { font-size: 0.7rem; color: #ef5350; line-height: 1.1; margin-bottom: 4px; font-weight: 500;}
+    .cal-short-info { font-size: 0.7rem; color: #f57c00; font-weight: bold; margin-bottom: 4px; }
     .cal-content { flex-grow: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; }
     .cal-week-sum { display: flex; align-items: center; justify-content: center; text-align: center; font-size: 0.75rem; opacity: 0.7; writing-mode: vertical-rl; transform: rotate(180deg); background: rgba(128,128,128, 0.1); border-radius: 4px; }
 
@@ -113,12 +113,10 @@
             <v-btn value="calendar" icon="mdi-calendar-month" @click="loadMonthData"></v-btn>
             <v-btn value="year" icon="mdi-chart-bar" @click="loadYearData"></v-btn>
         </v-btn-toggle>
-        
         <v-btn icon @click="dialogSettings = true"><v-icon>mdi-cog</v-icon></v-btn>
       </v-app-bar>
 
       <v-main>
-        
         <v-container fluid class="status-bar py-3 px-4 mb-3" v-if="viewMode !== 'year'">
             <v-row align="center" no-gutters>
                 <v-col cols="3" class="d-flex align-center">
@@ -149,8 +147,8 @@
                                 </template>
                                 <div class="text-caption">
                                     <strong>Berechnung:</strong><br>
-                                    (Arbeitstage im Monat × Tägliche Sollstunden) × Quote<br><br>
-                                    <em>Beispiel:</em> [[ stats.workdays_month ]] Tage × [[ formatNum(settings.weekly_hours / settings.workdays_per_week) ]] h × [[ settings.ho_quota_percent ]]%
+                                    (Summe aller täglichen Soll-Stunden) × Quote<br><br>
+                                    <em>Beispiel:</em> [[ stats.workdays_month ]] Arbeitstage mit unterschiedlicher Länge × [[ settings.ho_quota_percent ]]%
                                 </div>
                             </v-tooltip>
                         </div>
@@ -174,7 +172,6 @@
 
         <v-container>
             <v-card elevation="0" border min-height="500">
-                
                 <v-table density="compact" v-if="viewMode === 'list'">
                     <template v-slot:default>
                         <thead>
@@ -189,10 +186,18 @@
                         </thead>
                         <tbody>
                             <template v-for="item in items" :key="item ? item.date : 'list-unk'">
-                                <tr v-if="item && item.row_type === 'day'" :class="{'weekend': isWeekend(item), 'holiday-row': item.is_holiday, 'is-today': isToday(item.date), 'day-row': true}">
+                                <tr v-if="item && item.row_type === 'day'" 
+                                    :class="{
+                                        'weekend': isWeekend(item), 
+                                        'holiday-row': item.is_holiday,
+                                        'short-day-row': item.is_short_day,
+                                        'is-today': isToday(item.date),
+                                        'day-row': true
+                                    }">
                                     <td class="py-2">
                                         <div class="font-weight-medium">[[ item.day_num ]]. [[ getGermanDay(item.weekday_index) ]]</div>
                                         <div v-if="item.is_holiday" class="text-caption text-red-lighten-1 font-weight-bold">[[ item.holiday_name ]]</div>
+                                        <div v-if="item.is_short_day" class="text-caption text-orange-darken-1 font-weight-bold">[[ item.holiday_name ]] (Kurz)</div>
                                     </td>
                                     <td style="min-width: 160px;">
                                         <v-select v-model="item.type" :items="types" item-title="title" item-value="value" variant="plain" density="compact" hide-details class="mt-0 pt-0" @update:model-value="onTypeChange(item)"></v-select>
@@ -205,7 +210,10 @@
                                         <v-text-field v-if="needsTimeInput(item.type)" v-model="item.end" placeholder="16:00" variant="underlined" density="compact" hide-details @input="onTypeTime(item)" @change="saveEntry(item)"></v-text-field>
                                         <span v-else-if="item.type == 'x'" class="text-caption opacity-60">Ganzer Tag</span>
                                     </td>
-                                    <td><v-chip size="small" :color="getChipColor(item)" v-if="item.net > 0 || item.type === 'x'" variant="flat">[[ formatNum(item.net) ]] h</v-chip></td>
+                                    <td>
+                                        <v-chip size="small" :color="getChipColor(item)" v-if="item.net > 0 || item.type === 'x'" variant="flat">[[ formatNum(item.net) ]] h</v-chip>
+                                        <span v-if="item.is_short_day" class="text-caption ml-1 opacity-50">(Soll: [[ formatNum(item.daily_target) ]])</span>
+                                    </td>
                                     <td><v-btn icon size="x-small" variant="text" class="opacity-50" @click="clearEntry(item)" v-if="item.type"><v-icon>mdi-close</v-icon></v-btn></td>
                                 </tr>
                                 <tr v-else-if="item && item.row_type === 'summary'" class="week-summary-row">
@@ -226,6 +234,7 @@
                         <template v-for="item in items" :key="item ? item.date : 'cal-unk'">
                             <div v-if="item && item.row_type === 'day'" class="cal-cell"
                                  :class="{'is-holiday': item.is_holiday, 'is-weekend': isWeekend(item), 'is-today': isToday(item.date),
+                                    'is-short-day': item.is_short_day,
                                     'status-home': item.type === 'home' || item.type === 'x', 'status-office': item.type === 'office',
                                     'status-sick': item.type === 'sick', 'status-vacation': item.type === 'vacation'}"
                                  @click="openEditDialog(item)">
@@ -234,6 +243,7 @@
                                     <v-icon v-if="item.type" :color="getStatusIconColor(item.type)" size="small">[[ getStatusIcon(item.type) ]]</v-icon>
                                 </div>
                                 <div v-if="item.is_holiday" class="cal-holiday-name">[[ item.holiday_name ]]</div>
+                                <div v-if="item.is_short_day" class="cal-short-info">[[ item.holiday_name ]] (6h)</div>
                                 <div class="cal-content">
                                     <div v-if="item.type" class="font-weight-bold text-caption text-uppercase" :style="{color: getStatusIconColor(item.type)}">[[ getTypeName(item.type) ]]</div>
                                     <div v-if="item.net > 0 || item.type === 'x'" class="text-caption font-weight-bold">[[ formatNum(item.net) ]] h</div>
@@ -268,7 +278,6 @@
                         </tbody>
                     </template>
                 </v-table>
-
             </v-card>
         </v-container>
       </v-main>
@@ -290,7 +299,7 @@
         </v-card>
       </v-dialog>
 
-      <v-dialog v-model="dialogSettings" max-width="600">
+      <v-dialog v-model="dialogSettings" max-width="700">
         <v-card>
           <v-card-title>Einstellungen</v-card-title>
           <v-card-text>
@@ -301,16 +310,33 @@
               <v-col cols="4"><v-text-field v-model.number="settings.ho_quota_percent" label="HO Quote %" type="number" density="compact" variant="outlined"></v-text-field></v-col>
             </v-row>
             <v-divider class="my-3"></v-divider>
-            <h3 class="text-subtitle-1 font-weight-bold mb-2">Eigene Feiertage</h3>
+            
+            <div class="d-flex justify-space-between align-center mb-2">
+                <h3 class="text-subtitle-1 font-weight-bold">Eigene Feiertage & Sonderregelungen</h3>
+                <v-btn size="small" variant="tonal" color="primary" @click="addWaeldchestag">
+                    <v-icon start>mdi-calendar-plus</v-icon> Wäldchestag [[ currentYear ]]
+                </v-btn>
+            </div>
+            
             <v-table density="compact" class="mb-3" v-if="customHolidays.length > 0">
-              <thead><tr><th>Datum</th><th>Name</th><th style="width: 40px"></th></tr></thead>
-              <tbody><tr v-for="(h, i) in customHolidays" :key="i"><td>[[ h.date ]]</td><td>[[ h.name ]]</td><td><v-btn icon size="x-small" variant="text" color="red" @click="deleteCustomHoliday(i)"><v-icon>mdi-delete</v-icon></v-btn></td></tr></tbody>
+              <template v-slot:default>
+                <thead><tr><th>Datum</th><th>Name</th><th style="width: 80px;">Soll-Std.</th><th style="width: 40px"></th></tr></thead>
+                <tbody>
+                    <tr v-for="(h, i) in customHolidays" :key="i">
+                        <td>[[ h.date ]]</td><td>[[ h.name ]]</td>
+                        <td><span v-if="h.hours > 0" class="text-orange font-weight-bold">[[ h.hours ]] h</span><span v-else class="text-grey">Frei</span></td>
+                        <td><v-btn icon size="x-small" variant="text" color="red" @click="deleteCustomHoliday(i)"><v-icon>mdi-delete</v-icon></v-btn></td>
+                    </tr>
+                </tbody>
+              </template>
             </v-table>
             <v-row align="center">
-              <v-col cols="5"><v-text-field v-model="newCustomHoliday.date" label="Datum" density="compact" variant="outlined" hide-details type="date"></v-text-field></v-col>
-              <v-col cols="5"><v-text-field v-model="newCustomHoliday.name" label="Bez." density="compact" variant="outlined" hide-details></v-text-field></v-col>
+              <v-col cols="4"><v-text-field v-model="newCustomHoliday.date" label="Datum" density="compact" variant="outlined" hide-details type="date"></v-text-field></v-col>
+              <v-col cols="4"><v-text-field v-model="newCustomHoliday.name" label="Bez." density="compact" variant="outlined" hide-details></v-text-field></v-col>
+              <v-col cols="2"><v-text-field v-model.number="newCustomHoliday.hours" label="Std." placeholder="0" type="number" density="compact" variant="outlined" hide-details></v-text-field></v-col>
               <v-col cols="2"><v-btn color="primary" icon size="small" @click="addCustomHoliday"><v-icon>mdi-plus</v-icon></v-btn></v-col>
             </v-row>
+            <div class="text-caption text-grey mt-1">* Std = 0 bedeutet ganzer Tag frei. Std > 0 bedeutet verkürzter Arbeitstag (Soll wird angepasst).</div>
           </v-card-text>
           <v-card-actions><v-spacer></v-spacer><v-btn color="primary" @click="saveSettings">Schließen</v-btn></v-card-actions>
         </v-card>
@@ -418,7 +444,7 @@
         let t_start = parseToHours(start);
         let t_end = parseToHours(end);
         let hours_worked = t_end - t_start;
-        if(hours_worked < 0) return 0.0; // Keine Nachtschicht-Logik im Client nötig hier
+        if(hours_worked < 0) return 0.0; 
 
         let net_hours = 0.0;
         if (hours_worked <= 6.0) net_hours = hours_worked;
@@ -429,13 +455,22 @@
         return parseFloat(net_hours.toFixed(2));
     }
 
-    function getHolidayName(dateObj) {
-        const d = dateObj.getDate(), m = dateObj.getMonth() + 1, y = dateObj.getFullYear();
+    // HELPER: Ermittelt, ob ein Tag ein Custom-Feiertag ist (und ob mit Stunden)
+    function getCustomHolidayInfo(dateObj) {
         const ymd = new Date(dateObj.getTime() - (dateObj.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
+        const found = Store.getCustomHolidays().find(h => h.date === ymd);
+        return found; // Returns object { date, name, hours } or undefined
+    }
+
+    function getHolidayName(dateObj) {
+        // Zuerst Custom prüfen
+        const cust = getCustomHolidayInfo(dateObj);
+        if(cust) return cust.name;
+
+        // Dann Gesetzliche
+        const d = dateObj.getDate(), m = dateObj.getMonth() + 1, y = dateObj.getFullYear();
         if(m===12 && d===24) return "Heiligabend";
         if(m===12 && d===31) return "Silvester";
-        const found = Store.getCustomHolidays().find(h => h.date === ymd);
-        if(found) return found.name;
         if(m===1 && d===1) return "Neujahr";
         if(m===5 && d===1) return "Tag der Arbeit";
         if(m===10 && d===3) return "Tag der Deutschen Einheit";
@@ -468,7 +503,7 @@
           stats: { total_ho_made: 0, total_ho_allowed: 1, total_office_made: 0, total_work_made: 0, avg_per_week: 0, workdays_month: 0 }, 
           settings: { weekly_hours: 39, workdays_per_week: 5, ho_quota_percent: 60 },
           dialogSettings: false, dialogEditDay: false, editingDay: null,
-          customHolidays: [], newCustomHoliday: { date: '', name: '' },
+          customHolidays: [], newCustomHoliday: { date: '', name: '', hours: 0 },
           
           fileHandle: null, fileName: '', storedHandleName: '', unsavedChanges: false,
           types: [
@@ -500,18 +535,11 @@
           this.checkForStoredHandle();
       },
       methods: {
-        // --- ADDED HOME LINK ---
-        goHome() {
-            window.location.reload(); 
-        },
+        goHome() { window.location.reload(); },
         toggleTheme() { this.theme.global.name = this.theme.global.current.dark ? 'light' : 'dark'; },
         formatNum(val) { return val ? val.toFixed(2).replace('.', ',') : '0,00'; },
         getGermanDay(index) { return ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'][index] || ''; },
-        getGermanMonthName(m) { 
-            if(!m) return "";
-            const d = new Date(); d.setMonth(m-1); 
-            return d.toLocaleString('de-DE', { month: 'long' }); 
-        },
+        getGermanMonthName(m) { if(!m) return ""; const d = new Date(); d.setMonth(m-1); return d.toLocaleString('de-DE', { month: 'long' }); },
         isWeekend(day) { return day.weekday_index >= 5; },
         isToday(dateStr) { return dateStr === new Date().toISOString().split('T')[0]; },
         needsTimeInput(type) { return ['home', 'office', '', null].includes(type); },
@@ -526,7 +554,7 @@
             if(['home', 'office'].includes(day.type)) { 
                 if(!day.start) {
                     day.start = '08:00'; 
-                    const dailyTarget = this.settings.weekly_hours / this.settings.workdays_per_week;
+                    const dailyTarget = day.daily_target || (this.settings.weekly_hours / this.settings.workdays_per_week);
                     let breakMin = 0; if(dailyTarget > 9) breakMin = 45; else if(dailyTarget > 6) breakMin = 30;
                     const endMin = 480 + (dailyTarget * 60) + breakMin;
                     const h = Math.floor(endMin / 60); const m = Math.round(endMin % 60);
@@ -539,71 +567,148 @@
         changeMonth(delta) { this.currentDate = new Date(this.currentDate.setMonth(this.currentDate.getMonth() + delta)); this.loadMonthData(); },
         changeYear(delta) { this.currentDate = new Date(this.currentDate.setFullYear(this.currentDate.getFullYear() + delta)); if(this.viewMode === 'year') this.loadYearData(); else this.loadMonthData(); },
 
-        async loadSettings() { try { const res = await fetch('/api/settings'); if(res.ok) this.settings = await res.json(); } catch(e){} },
-        async loadCustomHolidays() { try { const res = await fetch('/api/custom-holidays'); if(res.ok) this.customHolidays = await res.json(); } catch(e){} },
-        async addCustomHoliday() {
-            if(!this.newCustomHoliday.date || !this.newCustomHoliday.name) return;
-            await fetch('/api/custom-holidays', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(this.newCustomHoliday) });
-            this.newCustomHoliday.date = ''; this.newCustomHoliday.name = ''; this.loadCustomHolidays(); 
-            if(this.viewMode === 'year') this.loadYearData(); else this.loadMonthData();
+        // WÄLDCHESTAG BERECHNUNG
+        addWaeldchestag() {
+            const y = this.currentYear;
+            const a=y%19, b=Math.floor(y/100), c=y%100, dd=Math.floor(b/4), e=b%4, f=Math.floor((b+8)/25), g=Math.floor((b-f+1)/3), h=(19*a+b-dd-g+15)%30, i=Math.floor(c/4), k=c%4, l=(32+2*e+2*i-h-k)%7, m_easter=Math.floor((a+11*h+22*l)/451);
+            const monthE = Math.floor((h+l-7*m_easter+114)/31);
+            const dayE = ((h+l-7*m_easter+114)%31)+1; 
+            
+            const easterDate = new Date(y, monthE - 1, dayE);
+            const waeldchestag = new Date(easterDate);
+            waeldchestag.setDate(easterDate.getDate() + 51);
+            
+            const dateStr = new Date(waeldchestag.getTime() - (waeldchestag.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
+            
+            this.newCustomHoliday.date = dateStr;
+            this.newCustomHoliday.name = 'Wäldchestag';
+            this.newCustomHoliday.hours = 6.0;
+            this.addCustomHoliday();
         },
-        async deleteCustomHoliday(id) { 
-            await fetch(`/api/custom-holidays/${id}`, { method: 'DELETE' }); 
-            this.loadCustomHolidays(); 
-            if(this.viewMode === 'year') this.loadYearData(); else this.loadMonthData(); 
+
+        // Helper für Tag-Infos
+        getDayInfo(dateObj, settings, customHolidays) {
+            const std_target = settings.weekly_hours / settings.workdays_per_week;
+            let is_workday = false, target = 0.0, holiday_name = "", is_short_day = false;
+
+            const cust = getCustomHolidayInfo(dateObj);
+            const stdName = getHolidayName(dateObj); // Name von gesetzlichem oder Custom
+
+            if (cust) {
+                holiday_name = cust.name;
+                if (cust.hours && cust.hours > 0) {
+                    is_workday = true; is_short_day = true; target = cust.hours;
+                } else {
+                    is_workday = false;
+                }
+            } else if (stdName) {
+                // Gesetzlicher Feiertag (und nicht Custom-überschrieben)
+                holiday_name = stdName;
+                is_workday = false;
+            } else {
+                // Normaler Tag
+                const weekday = (dateObj.getDay() + 6) % 7; // 0=Mo
+                if (weekday < 5) {
+                    is_workday = true; target = std_target;
+                }
+            }
+            return { is_workday, target, holiday_name, is_short_day };
         },
-        async saveSettings() { 
-            await fetch('/api/settings', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(this.settings) }); 
-            this.dialogSettings = false; 
-            if(this.viewMode === 'year') this.loadYearData(); else this.loadMonthData(); 
+
+        // LOCAL DATA LOGIC
+        loadData() {
+            this.loadMonthData();
         },
-        async loadMonthData() { try { const res = await fetch(`/api/month/${this.currentYear}/${this.currentMonth}`); const data = await res.json(); this.items = data.items || []; this.stats = data.stats || {}; } catch(e){} },
-        async loadYearData() { try { const res = await fetch(`/api/year/${this.currentYear}`); if(res.ok) this.yearData = await res.json(); } catch(e) { console.error(e); } },
-        async saveEntry(day) {
-            if(day.start) day.start = this.normalizeTimeInput(day.start);
-            if(day.end) day.end = this.normalizeTimeInput(day.end);
-            await fetch('/api/entry', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(day) });
-            this.loadMonthData(); 
-        },
-        clearEntry(day) { day.type = ""; day.start = ""; day.end = ""; this.saveEntry(day); },
-        normalizeTimeInput(t) {
-            if(!t) return ""; t = t.toString().trim(); if (t.match(/^\d{2}:\d{2}$/)) return t;
-            let h=0, m=0;
-            if (t.includes(':')) { const p = t.split(':'); h = parseInt(p[0]); m = parseInt(p[1]); } 
-            else if (t.includes('.')) { const p = t.split('.'); h = parseInt(p[0]); m = parseInt(p[1]); } 
-            else if (t.length === 4 && !isNaN(t)) { h = parseInt(t.substring(0, 2)); m = parseInt(t.substring(2, 4)); } 
-            else if (t.length === 3 && !isNaN(t)) { h = parseInt(t.substring(0, 1)); m = parseInt(t.substring(1, 3)); } 
-            else if (t.length <= 2 && !isNaN(t)) { h = parseInt(t); m = 0; } else { return t; }
-            if(isNaN(h)) h = 0; if(isNaN(m)) m = 0; return `${(h<10?'0':'')+h}:${(m<10?'0':'')+m}`;
+        loadMonthData() {
+            this.settings = Store.getSettings();
+            this.customHolidays = Store.getCustomHolidays();
+            const entries = Store.getEntries();
+            const year = this.currentYear, month = this.currentMonth;
+            const daysInMonth = new Date(year, month, 0).getDate();
+            let total_ho=0, total_office=0, workdays=0, current_week_sum=0;
+            let total_target_hours_month = 0.0;
+            
+            this.items = [];
+
+            for(let d=1; d<=daysInMonth; d++) {
+                const dateObj = new Date(year, month-1, d);
+                const dateStr = new Date(dateObj.getTime() - (dateObj.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
+                const isoWeek = getISOWeek(dateObj);
+                const weekday = (dateObj.getDay() + 6) % 7; 
+                
+                const info = this.getDayInfo(dateObj, this.settings, this.customHolidays);
+                
+                if (info.is_workday) {
+                    workdays++;
+                    total_target_hours_month += info.target;
+                }
+
+                const entry = entries[dateStr] || {};
+                const type = entry.type || "";
+                
+                let net = 0;
+                if(type === 'x') net = info.target;
+                else if(['home','office'].includes(type)) net = calculateNetHours(entry.start, entry.end);
+                net = parseFloat(net.toFixed(2)); 
+                
+                if(['home', 'x'].includes(type)) total_ho += net;
+                if(type === 'office') total_office += net;
+                current_week_sum += net;
+                
+                this.items.push({ 
+                    row_type: 'day', 
+                    date: dateStr, day_num: d, weekday_index: weekday, iso_week: isoWeek, 
+                    is_holiday: (info.holiday_name && !info.is_workday), 
+                    holiday_name: info.holiday_name,
+                    is_short_day: info.is_short_day,
+                    type: type, start: entry.start||'', end: entry.end||'', net: net,
+                    daily_target: info.target
+                });
+                
+                if(weekday === 6 || d === daysInMonth) {
+                    this.items.push({ 
+                        row_type: 'summary', 
+                        iso_week: isoWeek, sum: parseFloat(current_week_sum.toFixed(2)), target: this.settings.weekly_hours, date: 'sum-'+isoWeek 
+                    });
+                    current_week_sum = 0;
+                }
+            }
+            
+            const max_ho = total_target_hours_month * (this.settings.ho_quota_percent / 100);
+            const total_work = total_ho + total_office;
+            const week_count = this.items.filter(i => i.row_type === 'summary').length;
+            this.stats = { total_ho_made: total_ho, total_ho_allowed: max_ho, total_office_made: total_office, total_work_made: total_work, avg_per_week: week_count ? (total_work / week_count) : 0, workdays_month: workdays };
         },
         
         loadYearData() {
             this.settings = Store.getSettings();
+            this.customHolidays = Store.getCustomHolidays();
             const entries = Store.getEntries();
             const year = this.currentYear;
-            const daily_target = this.settings.weekly_hours / this.settings.workdays_per_week;
             
             this.yearData = [];
             
             for(let m=1; m<=12; m++) {
                 const daysInMonth = new Date(year, m, 0).getDate();
-                let ho_h=0, off_h=0, wd=0;
+                let ho_h=0, off_h=0, wd=0, total_target_month=0.0;
                 let days_ho=0, days_off=0;
                 
                 for(let d=1; d<=daysInMonth; d++) {
                     const dateObj = new Date(year, m-1, d);
                     const dateStr = new Date(dateObj.getTime() - (dateObj.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
-                    const holidayName = getHolidayName(dateObj);
-                    const isHoliday = !!holidayName;
-                    const weekday = (dateObj.getDay() + 6) % 7; 
                     
-                    if(!isHoliday && weekday < 5) wd++;
+                    const info = this.getDayInfo(dateObj, this.settings, this.customHolidays);
+                    
+                    if(info.is_workday) {
+                        wd++;
+                        total_target_month += info.target;
+                    }
                     
                     const entry = entries[dateStr];
                     if(entry) {
                         const type = entry.type;
                         let h = 0;
-                        if(type === 'x') h = daily_target;
+                        if(type === 'x') h = info.target;
                         else if(['home','office'].includes(type)) h = calculateNetHours(entry.start, entry.end);
                         
                         if(['home','x'].includes(type)) { ho_h += h; days_ho++; }
@@ -616,14 +721,72 @@
                     days_ho: days_ho,
                     days_office: days_off,
                     ho_hours_made: parseFloat(ho_h.toFixed(2)),
-                    ho_hours_allowed: parseFloat((wd * daily_target * (this.settings.ho_quota_percent/100)).toFixed(2)),
+                    ho_hours_allowed: parseFloat((total_target_month * (this.settings.ho_quota_percent/100)).toFixed(2)),
                     office_hours_made: parseFloat(off_h.toFixed(2))
                 });
             }
+        },
+
+        saveEntry(day) { 
+            if(day.start) day.start = normalizeTimeInput(day.start);
+            if(day.end) day.end = normalizeTimeInput(day.end);
+            if(day.type === "") Store.deleteEntry(day.date); 
+            else Store.saveEntry(day.date, { type: day.type, start: day.start, end: day.end }); 
+        },
+        clearEntry(day) { day.type = ""; day.start = ""; day.end = ""; this.saveEntry(day); },
+        saveSettings() { Store.saveSettings(this.settings); Store.saveCustomHolidays(this.customHolidays); this.dialogSettings = false; if(this.viewMode==='year') this.loadYearData(); else this.loadMonthData(); },
+        addCustomHoliday() { if(!this.newCustomHoliday.date || !this.newCustomHoliday.name) return; this.customHolidays.push({...this.newCustomHoliday}); this.newCustomHoliday = {date:'', name:''}; },
+        deleteCustomHoliday(index) { this.customHolidays.splice(index, 1); },
+
+        async checkForStoredHandle() {
+            try {
+                const handle = await idbGet('fileHandle');
+                if(handle) { this.storedHandleName = handle.name; }
+            } catch(e) { console.error(e); }
+        },
+        async restoreFileConnection() {
+            try {
+                const handle = await idbGet('fileHandle');
+                if(!handle) return;
+                const opts = { mode: 'readwrite' };
+                if ((await handle.queryPermission(opts)) === 'granted' || (await handle.requestPermission(opts)) === 'granted') {
+                     this.fileHandle = handle;
+                     this.fileName = handle.name;
+                     await this.loadFileContent();
+                }
+            } catch(e) { console.error("Restore failed", e); alert("Konnte Verbindung nicht wiederherstellen."); }
+        },
+        async openFile() {
+            try {
+                if (!window.showOpenFilePicker) { alert("Browser unterstützt FileSystemAccess nicht."); return; }
+                const [handle] = await window.showOpenFilePicker({ types: [{ description: 'JSON', accept: {'application/json': ['.json']} }], multiple: false });
+                this.fileHandle = handle;
+                this.fileName = handle.name;
+                await idbSet('fileHandle', handle);
+                this.storedHandleName = handle.name;
+                await this.loadFileContent();
+            } catch(e) {}
+        },
+        async loadFileContent() {
+             const file = await this.fileHandle.getFile();
+             const text = await file.text();
+             try { 
+                 const json = JSON.parse(text); 
+                 Store.set(json); 
+                 this.loadData();
+             } catch(e) { Store.init(); this.saveToFile(); }
+        },
+        async saveToFile() {
+            if(!this.fileHandle) return;
+            try {
+                const writable = await this.fileHandle.createWritable();
+                await writable.write(JSON.stringify(Store.get(), null, 2));
+                await writable.close();
+                this.unsavedChanges = false;
+            } catch(e) { alert("Fehler beim Speichern"); }
         }
       }
     });
-
     app.config.compilerOptions.delimiters = ['[[', ']]'];
     app.use(vuetify);
     app.mount('#app');
