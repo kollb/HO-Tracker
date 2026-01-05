@@ -19,40 +19,41 @@
     .v-field__input { padding-top: 6px !important; padding-bottom: 6px !important; min-height: 32px !important; }
     
     .status-bar { 
-        border-bottom: 1px solid #ddd; 
-        background: white; 
         position: sticky; top: 48px; z-index: 10;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        border-bottom: 1px solid rgba(128,128,128, 0.2);
     }
-    .stat-label { font-size: 0.75rem; color: #757575; text-transform: uppercase; letter-spacing: 0.5px; }
+    .stat-label { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.7; }
     .stat-value { font-weight: 700; font-size: 1rem; }
 
     .day-row { transition: background-color 0.2s; }
-    .day-row:hover { background-color: #f0f7ff !important; }
-    .weekend, .holiday-row { background-color: #f8f9fa; color: #888; }
-    .is-today { border-left: 4px solid #1976D2; background-color: #e3f2fd !important; }
-    .week-summary-row { background-color: #eee; color: #444; height: 36px !important; }
+    .day-row:hover { background-color: rgba(128,128,128, 0.1) !important; }
+    
+    .weekend, .holiday-row { background-color: rgba(128,128,128, 0.05); opacity: 0.8; }
+    .is-today { border-left: 4px solid #1976D2; background-color: rgba(25, 118, 210, 0.1) !important; }
+    
+    .week-summary-row { background-color: rgba(128,128,128, 0.1); height: 36px !important; }
     .week-summary-row td { font-weight: bold; font-size: 0.85rem; padding-top: 0 !important; padding-bottom: 0 !important; }
 
     .calendar-wrapper { display: grid; grid-template-columns: repeat(7, 1fr) 60px; gap: 6px; padding: 10px; }
-    .cal-header { text-align: center; font-weight: bold; color: #757575; font-size: 0.85rem; padding-bottom: 5px; text-transform: uppercase; }
+    .cal-header { text-align: center; font-weight: bold; font-size: 0.85rem; padding-bottom: 5px; text-transform: uppercase; opacity: 0.7; }
     .cal-cell {
-        background: white; border: 1px solid #e0e0e0; border-radius: 8px; min-height: 110px; padding: 6px;
+        border: 1px solid rgba(128,128,128, 0.2); border-radius: 8px; min-height: 110px; padding: 6px;
         display: flex; flex-direction: column; justify-content: space-between; cursor: pointer; transition: all 0.2s; position: relative;
     }
-    .cal-cell:hover { border-color: #1976D2; box-shadow: 0 2px 8px rgba(0,0,0,0.1); z-index: 2; }
-    .cal-cell.is-holiday { background-color: #fff0f0; border-color: #ffcdd2; }
-    .cal-cell.is-weekend { background-color: #fafafa; }
-    .cal-cell.is-today { border: 2px solid #1976D2; background-color: #e3f2fd; }
+    .cal-cell:hover { border-color: #1976D2; box-shadow: 0 2px 8px rgba(0,0,0,0.2); z-index: 2; }
+    .cal-cell.is-holiday { background-color: rgba(244, 67, 54, 0.05); border-color: rgba(244, 67, 54, 0.2); }
+    .cal-cell.is-weekend { background-color: rgba(128,128,128, 0.03); }
+    .cal-cell.is-today { border: 2px solid #1976D2; background-color: rgba(25, 118, 210, 0.1); }
+    
     .cal-date { font-weight: bold; font-size: 1rem; margin-bottom: 4px; }
-    .cal-holiday-name { font-size: 0.7rem; color: #d32f2f; line-height: 1.1; margin-bottom: 4px; font-weight: 500;}
+    .cal-holiday-name { font-size: 0.7rem; color: #ef5350; line-height: 1.1; margin-bottom: 4px; font-weight: 500;}
     .cal-content { flex-grow: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; }
-    .cal-week-sum { display: flex; align-items: center; justify-content: center; text-align: center; font-size: 0.75rem; color: #757575; writing-mode: vertical-rl; transform: rotate(180deg); background: #f5f5f5; border-radius: 4px; }
+    .cal-week-sum { display: flex; align-items: center; justify-content: center; text-align: center; font-size: 0.75rem; opacity: 0.7; writing-mode: vertical-rl; transform: rotate(180deg); background: rgba(128,128,128, 0.1); border-radius: 4px; }
 
-    .status-home { background-color: #e8f5e9; border-color: #c8e6c9; }
-    .status-office { background-color: #fff8e1; border-color: #ffe082; }
-    .status-sick { background-color: #ffebee; }
-    .status-vacation { background-color: #e0f7fa; }
+    .status-home { background-color: rgba(76, 175, 80, 0.15); border-color: rgba(76, 175, 80, 0.5); }
+    .status-office { background-color: rgba(255, 193, 7, 0.15); border-color: rgba(255, 193, 7, 0.5); }
+    .status-sick { background-color: rgba(244, 67, 54, 0.15); }
+    .status-vacation { background-color: rgba(156, 39, 176, 0.15); }
     
     .file-status { font-size: 0.75rem; margin-right: 10px; color: #666; display: flex; align-items: center; gap: 5px; }
     .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
@@ -64,7 +65,7 @@
 <body>
   
   <div id="app" v-cloak>
-    <v-app style="background-color: #f8f9fa;">
+    <v-app>
       <v-app-bar color="primary" density="compact" elevation="1">
         <v-app-bar-title class="font-weight-bold">Home Office Tracker</v-app-bar-title>
         <v-spacer></v-spacer>
@@ -97,20 +98,27 @@
 
         <v-divider vertical class="mx-2 my-3" color="white" thickness="2"></v-divider>
 
+        <v-btn icon @click="toggleTheme" class="mr-2">
+            <v-icon>[[ theme.global.current.dark ? 'mdi-weather-sunny' : 'mdi-weather-night' ]]</v-icon>
+        </v-btn>
+
         <v-btn-toggle v-model="viewMode" density="compact" mandatory class="mr-3" variant="outlined" color="white" divided>
-            <v-btn value="list" icon="mdi-format-list-bulleted"></v-btn>
-            <v-btn value="calendar" icon="mdi-calendar-month"></v-btn>
+            <v-btn value="list" icon="mdi-format-list-bulleted" @click="loadMonthData"></v-btn>
+            <v-btn value="calendar" icon="mdi-calendar-month" @click="loadMonthData"></v-btn>
+            <v-btn value="year" icon="mdi-chart-bar" @click="loadYearData"></v-btn>
         </v-btn-toggle>
+        
         <v-btn icon @click="dialogSettings = true"><v-icon>mdi-cog</v-icon></v-btn>
       </v-app-bar>
 
       <v-main>
-        <v-container fluid class="status-bar py-3 px-4 mb-3">
+        
+        <v-container fluid class="status-bar py-3 px-4 mb-3" v-if="viewMode !== 'year'">
             <v-row align="center" no-gutters>
                 <v-col cols="3" class="d-flex align-center">
                     <v-btn icon variant="text" size="small" @click="changeMonth(-1)"><v-icon>mdi-chevron-left</v-icon></v-btn>
                     <div class="font-weight-bold mx-2 text-center" style="min-width: 120px; line-height: 1.2;">
-                        <div>[[ currentMonthName ]]</div><div class="text-caption text-grey">[[ currentYear ]]</div>
+                        <div>[[ currentMonthName ]]</div><div class="text-caption opacity-70">[[ currentYear ]]</div>
                     </div>
                     <v-btn icon variant="text" size="small" @click="changeMonth(1)"><v-icon>mdi-chevron-right</v-icon></v-btn>
                 </v-col>
@@ -121,7 +129,7 @@
                             <div class="text-caption text-green-darken-2" style="font-size: 0.7rem;">Ø [[ formatNum(stats.avg_per_week) ]] / Wo.</div>
                         </div>
                         <div class="text-center">
-                            <div class="stat-label">Büro</div><div class="stat-value text-amber-darken-4">[[ formatNum(stats.total_office_made) ]] h</div>
+                            <div class="stat-label">Büro</div><div class="stat-value text-amber-darken-2">[[ formatNum(stats.total_office_made) ]] h</div>
                         </div>
                     </div>
                 </v-col>
@@ -131,7 +139,7 @@
                             <span class="stat-label mr-1">Home Office Budget</span>
                             <v-tooltip location="bottom" max-width="300">
                                 <template v-slot:activator="{ props }">
-                                    <v-icon v-bind="props" size="x-small" color="grey">mdi-information-outline</v-icon>
+                                    <v-icon v-bind="props" size="x-small" class="opacity-50">mdi-information-outline</v-icon>
                                 </template>
                                 <div class="text-caption">
                                     <strong>Berechnung:</strong><br>
@@ -147,12 +155,24 @@
             </v-row>
         </v-container>
 
+        <v-container fluid class="status-bar py-3 px-4 mb-3" v-else>
+            <v-row align="center" no-gutters>
+                <v-col cols="3" class="d-flex align-center">
+                    <v-btn icon variant="text" size="small" @click="changeYear(-1)"><v-icon>mdi-chevron-left</v-icon></v-btn>
+                    <div class="font-weight-bold mx-2 text-center" style="min-width: 120px;">Jahr [[ currentYear ]]</div>
+                    <v-btn icon variant="text" size="small" @click="changeYear(1)"><v-icon>mdi-chevron-right</v-icon></v-btn>
+                </v-col>
+                <v-col cols="9" class="text-right"><span class="stat-label">Jahresübersicht</span></v-col>
+            </v-row>
+        </v-container>
+
         <v-container>
             <v-card elevation="0" border min-height="500">
+                
                 <v-table density="compact" v-if="viewMode === 'list'">
                     <template v-slot:default>
                         <thead>
-                            <tr style="background-color: #fafafa;">
+                            <tr style="background-color: rgba(128,128,128,0.05);">
                                 <th class="text-left font-weight-bold">Datum</th>
                                 <th class="text-left font-weight-bold">Status</th>
                                 <th class="text-left font-weight-bold">Start</th>
@@ -173,14 +193,14 @@
                                     </td>
                                     <td>
                                         <v-text-field v-if="needsTimeInput(item.type)" v-model="item.start" placeholder="08:00" variant="underlined" density="compact" hide-details @input="onTypeTime(item)" @change="saveEntry(item)"></v-text-field>
-                                        <span v-else-if="item.type == 'x'" class="text-caption text-grey">Automatisch</span>
+                                        <span v-else-if="item.type == 'x'" class="text-caption opacity-60">Automatisch</span>
                                     </td>
                                     <td>
                                         <v-text-field v-if="needsTimeInput(item.type)" v-model="item.end" placeholder="16:00" variant="underlined" density="compact" hide-details @input="onTypeTime(item)" @change="saveEntry(item)"></v-text-field>
-                                        <span v-else-if="item.type == 'x'" class="text-caption text-grey">Ganzer Tag</span>
+                                        <span v-else-if="item.type == 'x'" class="text-caption opacity-60">Ganzer Tag</span>
                                     </td>
                                     <td><v-chip size="small" :color="getChipColor(item)" v-if="item.net > 0 || item.type === 'x'" variant="flat">[[ formatNum(item.net) ]] h</v-chip></td>
-                                    <td><v-btn icon size="x-small" variant="text" color="grey" @click="clearEntry(item)" v-if="item.type"><v-icon>mdi-close</v-icon></v-btn></td>
+                                    <td><v-btn icon size="x-small" variant="text" class="opacity-50" @click="clearEntry(item)" v-if="item.type"><v-icon>mdi-close</v-icon></v-btn></td>
                                 </tr>
                                 <tr v-else class="week-summary-row">
                                     <td colspan="4" class="text-right pr-4">KW [[ item.iso_week ]] GESAMT:</td>
@@ -191,7 +211,7 @@
                     </template>
                 </v-table>
 
-                <div v-else class="pa-2">
+                <div v-else-if="viewMode === 'calendar'" class="pa-2">
                     <div class="calendar-wrapper">
                         <div class="cal-header">Mo</div><div class="cal-header">Di</div><div class="cal-header">Mi</div>
                         <div class="cal-header">Do</div><div class="cal-header">Fr</div><div class="cal-header text-red">Sa</div>
@@ -217,6 +237,32 @@
                         </template>
                     </div>
                 </div>
+
+                <v-table v-if="viewMode === 'year'" density="comfortable">
+                    <template v-slot:default>
+                        <thead>
+                            <tr style="background-color: rgba(128,128,128,0.05);">
+                                <th class="text-left">Monat</th><th class="text-center">Home Office Tage</th><th class="text-center">Büro Tage</th><th class="text-center">Budget Nutzung</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr v-for="stat in yearData" :key="stat.month">
+                                <td class="font-weight-medium">[[ getGermanMonthName(stat.month) ]]</td>
+                                <td class="text-center"><v-chip size="small" color="green" variant="flat" v-if="stat.days_ho > 0">[[ stat.days_ho ]] Tage</v-chip><span v-else class="opacity-50">-</span></td>
+                                <td class="text-center"><v-chip size="small" color="amber-darken-2" variant="flat" v-if="stat.days_office > 0">[[ stat.days_office ]] Tage</v-chip><span v-else class="opacity-50">-</span></td>
+                                <td class="text-center">
+                                    <div class="d-flex align-center justify-center">
+                                        <div style="width: 120px" class="mr-2">
+                                            <v-progress-linear :model-value="stat.ho_hours_allowed ? (stat.ho_hours_made / stat.ho_hours_allowed)*100 : 0" color="blue" height="6" rounded></v-progress-linear>
+                                        </div>
+                                        <span class="text-caption">[[ formatNum(stat.ho_hours_made) ]] / [[ formatNum(stat.ho_hours_allowed) ]] h</span>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </template>
+                </v-table>
+
             </v-card>
         </v-container>
       </v-main>
@@ -269,6 +315,8 @@
   <script>
     const { createApp } = Vue
     const { createVuetify } = Vuetify
+
+    const vuetify = createVuetify({ theme: { defaultTheme: 'dark' } })
 
     // -------------------------------------------------------------------
     // INDEXED DB HELPER
@@ -339,69 +387,39 @@
     // LOGIC FUNCTIONS
     // -------------------------------------------------------------------
     
-    // Normalisiert Eingaben wie "0615", "6.15", "615" zu "06:15"
     function normalizeTimeInput(t) {
         if(!t) return "";
         t = t.toString().trim();
-        // Wenn schon richtiges Format HH:MM
         if (t.match(/^\d{2}:\d{2}$/)) return t;
-        
         let h=0, m=0;
-        
-        if (t.includes(':')) {
-            const p = t.split(':');
-            h = parseInt(p[0]); m = parseInt(p[1]);
-        } else if (t.includes('.')) {
-            const p = t.split('.');
-            h = parseInt(p[0]); m = parseInt(p[1]);
-        } else if (t.length === 4 && !isNaN(t)) {
-            // 0615
-            h = parseInt(t.substring(0, 2)); m = parseInt(t.substring(2, 4));
-        } else if (t.length === 3 && !isNaN(t)) {
-            // 615
-            h = parseInt(t.substring(0, 1)); m = parseInt(t.substring(1, 3));
-        } else if (t.length <= 2 && !isNaN(t)) {
-            // 8 -> 08:00
-            h = parseInt(t); m = 0;
-        } else {
-            return t; // Unbekanntes Format, zurückgeben
-        }
-        
-        if(isNaN(h)) h = 0;
-        if(isNaN(m)) m = 0;
-        
-        const hh = (h < 10 ? "0" : "") + h;
-        const mm = (m < 10 ? "0" : "") + m;
-        return `${hh}:${mm}`;
+        if (t.includes(':')) { const p = t.split(':'); h = parseInt(p[0]); m = parseInt(p[1]); } 
+        else if (t.includes('.')) { const p = t.split('.'); h = parseInt(p[0]); m = parseInt(p[1]); } 
+        else if (t.length === 4 && !isNaN(t)) { h = parseInt(t.substring(0, 2)); m = parseInt(t.substring(2, 4)); } 
+        else if (t.length === 3 && !isNaN(t)) { h = parseInt(t.substring(0, 1)); m = parseInt(t.substring(1, 3)); } 
+        else if (t.length <= 2 && !isNaN(t)) { h = parseInt(t); m = 0; } else { return t; }
+        if(isNaN(h)) h = 0; if(isNaN(m)) m = 0; return `${(h<10?'0':'')+h}:${(m<10?'0':'')+m}`;
     }
 
     function calculateNetHours(start, end) {
-        // Hier nutzen wir dieselbe Parsing-Logik, nur direkt zu Minuten
         const parseToHours = (t) => {
             if(!t) return 0.0;
-            // Wir nutzen normalize, dann split
             const norm = normalizeTimeInput(t);
             if(!norm.includes(':')) return 0.0;
             const p = norm.split(':');
             return parseInt(p[0]) + parseInt(p[1])/60.0;
         }
-
         if(!start || !end) return 0.0;
-        
         let t_start = parseToHours(start);
         let t_end = parseToHours(end);
         let hours_worked = t_end - t_start;
+        if(hours_worked < 0) return 0.0; // Keine Nachtschicht-Logik im Client nötig hier
 
-        if(hours_worked < 0) return 0.0;
-
-        // Exakte Python-Logik (Pausenkorridor)
         let net_hours = 0.0;
         if (hours_worked <= 6.0) net_hours = hours_worked;
         else if (hours_worked < 6.5) net_hours = 6.0; 
         else if (hours_worked < 9.5) net_hours = hours_worked - 0.5;
         else if (hours_worked < 9.75) net_hours = 9.0;
         else net_hours = hours_worked - 0.75;
-
         return parseFloat(net_hours.toFixed(2));
     }
 
@@ -440,7 +458,7 @@
     const app = createApp({
       data() {
         return {
-          viewMode: 'list', currentDate: new Date(), items: [], 
+          viewMode: 'list', currentDate: new Date(), items: [], yearData: [],
           stats: { total_ho_made: 0, total_ho_allowed: 1, total_office_made: 0, total_work_made: 0, avg_per_week: 0, workdays_month: 0 }, 
           settings: { weekly_hours: 39, workdays_per_week: 5, ho_quota_percent: 60 },
           dialogSettings: false, dialogEditDay: false, editingDay: null,
@@ -462,16 +480,24 @@
         quotaPercentage() { if(!this.stats.total_ho_allowed) return 0; return (this.stats.total_ho_made / this.stats.total_ho_allowed) * 100; },
         getQuotaColor() { return this.quotaPercentage > 100 ? 'red' : (this.quotaPercentage > 85 ? 'orange' : 'blue-darken-1'); },
         getQuotaColorText() { return this.quotaPercentage > 100 ? 'text-red' : 'text-blue-darken-2'; },
-        paddingDays() { if(!this.items || this.items.length === 0) return 0; const firstDay = this.items.find(i => i.row_type === 'day'); return firstDay ? firstDay.weekday_index : 0; }
+        paddingDays() { if(!this.items || this.items.length === 0) return 0; const firstDay = this.items.find(i => i.row_type === 'day'); return firstDay ? firstDay.weekday_index : 0; },
+        theme() { return this.$vuetify.theme }
+      },
+      watch: {
+        viewMode(newVal) {
+            if(newVal === 'year') this.loadYearData(); else this.loadMonthData();
+        }
       },
       mounted() { 
-          Store.onPersist = () => { this.loadData(); if(this.fileHandle) this.saveToFile(); else this.unsavedChanges = true; };
+          Store.onPersist = () => { if(this.viewMode==='year') this.loadYearData(); else this.loadMonthData(); if(this.fileHandle) this.saveToFile(); else this.unsavedChanges = true; };
           this.loadData(); 
           this.checkForStoredHandle();
       },
       methods: {
+        toggleTheme() { this.theme.global.name = this.theme.global.current.dark ? 'light' : 'dark'; },
         formatNum(val) { return val ? val.toFixed(2).replace('.', ',') : '0,00'; },
         getGermanDay(index) { return ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'][index] || ''; },
+        getGermanMonthName(m) { if(!m) return ""; const d = new Date(); d.setMonth(m-1); return d.toLocaleString('de-DE', { month: 'long' }); },
         isWeekend(day) { return day.weekday_index >= 5; },
         isToday(dateStr) { return dateStr === new Date().toISOString().split('T')[0]; },
         needsTimeInput(type) { return ['home', 'office', '', null].includes(type); },
@@ -483,33 +509,28 @@
         
         openEditDialog(day) { this.editingDay = day; this.dialogEditDay = true; },
         onTypeChange(day) { 
-            // Automatische Zeiten
             if(['home', 'office'].includes(day.type)) { 
                 if(!day.start) {
                     day.start = '08:00'; 
-                    // Berechnen der Endzeit basierend auf Wochenstunden/Arbeitstage
-                    const dailyTargetHours = this.settings.weekly_hours / this.settings.workdays_per_week;
-                    let breakMin = 0;
-                    if(dailyTargetHours > 9) breakMin = 45;
-                    else if(dailyTargetHours > 6) breakMin = 30;
-                    
-                    const targetMinutes = dailyTargetHours * 60;
-                    // Start 08:00 = 480 min
-                    const endTimeMin = 480 + targetMinutes + breakMin;
-                    
-                    const h = Math.floor(endTimeMin / 60);
-                    const m = Math.round(endTimeMin % 60);
-                    const hh = (h < 10 ? '0' : '') + h;
-                    const mm = (m < 10 ? '0' : '') + m;
-                    day.end = `${hh}:${mm}`;
+                    const dailyTarget = this.settings.weekly_hours / this.settings.workdays_per_week;
+                    let breakMin = 0; if(dailyTarget > 9) breakMin = 45; else if(dailyTarget > 6) breakMin = 30;
+                    const endMin = 480 + (dailyTarget * 60) + breakMin;
+                    const h = Math.floor(endMin / 60); const m = Math.round(endMin % 60);
+                    day.end = `${(h<10?'0':'')+h}:${(m<10?'0':'')+m}`;
                 }
             } 
             this.saveEntry(day); 
         },
         onTypeTime(day) { if(!day.type) day.type = 'home'; },
-        changeMonth(delta) { this.currentDate = new Date(this.currentDate.setMonth(this.currentDate.getMonth() + delta)); this.loadData(); },
+        changeMonth(delta) { this.currentDate = new Date(this.currentDate.setMonth(this.currentDate.getMonth() + delta)); this.loadMonthData(); },
+        changeYear(delta) { this.currentDate = new Date(this.currentDate.setFullYear(this.currentDate.getFullYear() + delta)); if(this.viewMode === 'year') this.loadYearData(); else this.loadMonthData(); },
 
+        // LOCAL DATA LOGIC
         loadData() {
+            // Wrapper for initial load
+            this.loadMonthData();
+        },
+        loadMonthData() {
             this.settings = Store.getSettings();
             this.customHolidays = Store.getCustomHolidays();
             const entries = Store.getEntries();
@@ -530,7 +551,6 @@
                 const entry = entries[dateStr] || {};
                 const type = entry.type || "";
                 
-                // Normalisieren beim Laden nicht zwingend, aber Berechnung muss stimmen
                 let net = 0;
                 if(type === 'x') net = daily_target;
                 else if(['home','office'].includes(type)) net = calculateNetHours(entry.start, entry.end);
@@ -539,9 +559,17 @@
                 if(['home', 'x'].includes(type)) total_ho += net;
                 if(type === 'office') total_office += net;
                 current_week_sum += net;
-                this.items.push({ row_type: 'day', date: dateStr, day_num: d, weekday_index: weekday, iso_week: isoWeek, is_holiday: isHoliday, holiday_name: holidayName, type: type, start: entry.start||'', end: entry.end||'', net: net });
+                
+                this.items.push({ 
+                    row_type: 'day', 
+                    date: dateStr, day_num: d, weekday_index: weekday, iso_week: isoWeek, is_holiday: isHoliday, holiday_name: holidayName, type: type, start: entry.start||'', end: entry.end||'', net: net 
+                });
+                
                 if(weekday === 6 || d === daysInMonth) {
-                    this.items.push({ row_type: 'summary', iso_week: isoWeek, sum: parseFloat(current_week_sum.toFixed(2)), target: this.settings.weekly_hours, date: 'sum-'+isoWeek });
+                    this.items.push({ 
+                        row_type: 'summary', 
+                        iso_week: isoWeek, sum: parseFloat(current_week_sum.toFixed(2)), target: this.settings.weekly_hours, date: 'sum-'+isoWeek 
+                    });
                     current_week_sum = 0;
                 }
             }
@@ -550,16 +578,60 @@
             const week_count = this.items.filter(i => i.row_type === 'summary').length;
             this.stats = { total_ho_made: total_ho, total_ho_allowed: max_ho, total_office_made: total_office, total_work_made: total_work, avg_per_week: week_count ? (total_work / week_count) : 0, workdays_month: workdays };
         },
+        
+        loadYearData() {
+            this.settings = Store.getSettings();
+            const entries = Store.getEntries();
+            const year = this.currentYear;
+            const daily_target = this.settings.weekly_hours / this.settings.workdays_per_week;
+            
+            this.yearData = [];
+            
+            for(let m=1; m<=12; m++) {
+                const daysInMonth = new Date(year, m, 0).getDate();
+                let ho_h=0, off_h=0, wd=0;
+                let days_ho=0, days_off=0;
+                
+                for(let d=1; d<=daysInMonth; d++) {
+                    const dateObj = new Date(year, m-1, d);
+                    const dateStr = new Date(dateObj.getTime() - (dateObj.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
+                    const holidayName = getHolidayName(dateObj);
+                    const isHoliday = !!holidayName;
+                    const weekday = (dateObj.getDay() + 6) % 7; 
+                    
+                    if(!isHoliday && weekday < 5) wd++;
+                    
+                    const entry = entries[dateStr];
+                    if(entry) {
+                        const type = entry.type;
+                        let h = 0;
+                        if(type === 'x') h = daily_target;
+                        else if(['home','office'].includes(type)) h = calculateNetHours(entry.start, entry.end);
+                        
+                        if(['home','x'].includes(type)) { ho_h += h; days_ho++; }
+                        else if(type === 'office') { off_h += h; days_off++; }
+                    }
+                }
+                
+                this.yearData.push({
+                    month: m,
+                    days_ho: days_ho,
+                    days_office: days_off,
+                    ho_hours_made: parseFloat(ho_h.toFixed(2)),
+                    ho_hours_allowed: parseFloat((wd * daily_target * (this.settings.ho_quota_percent/100)).toFixed(2)),
+                    office_hours_made: parseFloat(off_h.toFixed(2))
+                });
+            }
+        },
+
         saveEntry(day) { 
-            // Normalisierung VOR dem Speichern
             if(day.start) day.start = normalizeTimeInput(day.start);
             if(day.end) day.end = normalizeTimeInput(day.end);
-
             if(day.type === "") Store.deleteEntry(day.date); 
             else Store.saveEntry(day.date, { type: day.type, start: day.start, end: day.end }); 
         },
         clearEntry(day) { day.type = ""; day.start = ""; day.end = ""; this.saveEntry(day); },
-        saveSettings() { Store.saveSettings(this.settings); Store.saveCustomHolidays(this.customHolidays); this.dialogSettings = false; },
+        saveSettings() { Store.saveSettings(this.settings); Store.saveCustomHolidays(this.customHolidays); this.dialogSettings = false; if(this.viewMode==='year') this.loadYearData(); else this.loadMonthData(); },
         addCustomHoliday() { if(!this.newCustomHoliday.date || !this.newCustomHoliday.name) return; this.customHolidays.push({...this.newCustomHoliday}); this.newCustomHoliday = {date:'', name:''}; },
         deleteCustomHoliday(index) { this.customHolidays.splice(index, 1); },
 
@@ -613,9 +685,8 @@
       }
     });
     app.config.compilerOptions.delimiters = ['[[', ']]'];
-    app.use(createVuetify());
+    app.use(vuetify);
     app.mount('#app');
   </script>
 </body>
 </html>
-
