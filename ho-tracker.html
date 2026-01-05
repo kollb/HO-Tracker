@@ -1,9 +1,11 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-  <title>BBk Tracker (Smart File)</title>
+  <title>Home Office Tracker</title>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, minimal-ui">
+  
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22%231976D2%22><path d=%22M10,20V14H14V20H19V12H22L12,3L2,12H5V20H10Z%22/></svg>">
   
   <link href="https://fonts.googleapis.com/css?family=Roboto:100,300,400,500,700,900" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/@mdi/font@6.x/css/materialdesignicons.min.css" rel="stylesheet">
@@ -64,7 +66,7 @@
   <div id="app" v-cloak>
     <v-app style="background-color: #f8f9fa;">
       <v-app-bar color="primary" density="compact" elevation="1">
-        <v-app-bar-title class="font-weight-bold">BBk Tracker</v-app-bar-title>
+        <v-app-bar-title class="font-weight-bold">Home Office Tracker</v-app-bar-title>
         <v-spacer></v-spacer>
         
         <div class="file-status" v-if="fileHandle">
@@ -124,8 +126,20 @@
                     </div>
                 </v-col>
                 <v-col cols="4" class="pl-4">
-                    <div class="d-flex justify-space-between mb-1">
-                        <span class="stat-label">Home Office</span>
+                    <div class="d-flex justify-space-between mb-1 align-center">
+                        <div class="d-flex align-center">
+                            <span class="stat-label mr-1">Home Office Budget</span>
+                            <v-tooltip location="bottom" max-width="300">
+                                <template v-slot:activator="{ props }">
+                                    <v-icon v-bind="props" size="x-small" color="grey">mdi-information-outline</v-icon>
+                                </template>
+                                <div class="text-caption">
+                                    <strong>Berechnung:</strong><br>
+                                    (Arbeitstage im Monat × Tägliche Sollstunden) × Quote<br><br>
+                                    <em>Beispiel:</em> [[ stats.workdays_month ]] Tage × [[ formatNum(settings.weekly_hours / settings.workdays_per_week) ]] h × [[ settings.ho_quota_percent ]]%
+                                </div>
+                            </v-tooltip>
+                        </div>
                         <span class="text-caption font-weight-bold" :class="getQuotaColorText">[[ formatNum(stats.total_ho_made) ]] / [[ formatNum(stats.total_ho_allowed) ]]</span>
                     </div>
                     <v-progress-linear :model-value="quotaPercentage" :color="getQuotaColor" height="8" rounded></v-progress-linear>
@@ -214,12 +228,8 @@
                 <v-select v-model="editingDay.type" :items="types" label="Status" item-title="title" item-value="value" variant="outlined" density="comfortable" @update:model-value="onTypeChange(editingDay)"></v-select>
                 <div v-if="needsTimeInput(editingDay.type)">
                     <v-row>
-                        <v-col cols="6">
-                            <v-text-field v-model="editingDay.start" label="Start" placeholder="08:00" variant="outlined" density="compact" @change="saveEntry(editingDay)"></v-text-field>
-                        </v-col>
-                        <v-col cols="6">
-                            <v-text-field v-model="editingDay.end" label="Ende" placeholder="16:00" variant="outlined" density="compact" @change="saveEntry(editingDay)"></v-text-field>
-                        </v-col>
+                        <v-col cols="6"><v-text-field v-model="editingDay.start" label="Start" placeholder="08:00" variant="outlined" density="compact" @change="saveEntry(editingDay)"></v-text-field></v-col>
+                        <v-col cols="6"><v-text-field v-model="editingDay.end" label="Ende" placeholder="16:00" variant="outlined" density="compact" @change="saveEntry(editingDay)"></v-text-field></v-col>
                     </v-row>
                     <div class="text-center text-h6 mt-2" v-if="editingDay.net > 0">[[ formatNum(editingDay.net) ]] Stunden</div>
                 </div>
@@ -431,7 +441,7 @@
       data() {
         return {
           viewMode: 'list', currentDate: new Date(), items: [], 
-          stats: { total_ho_made: 0, total_ho_allowed: 1, total_office_made: 0, total_work_made: 0, avg_per_week: 0 }, 
+          stats: { total_ho_made: 0, total_ho_allowed: 1, total_office_made: 0, total_work_made: 0, avg_per_week: 0, workdays_month: 0 }, 
           settings: { weekly_hours: 39, workdays_per_week: 5, ho_quota_percent: 60 },
           dialogSettings: false, dialogEditDay: false, editingDay: null,
           customHolidays: [], newCustomHoliday: { date: '', name: '' },
@@ -472,7 +482,30 @@
         getChipColor(day) { if (day.type === 'x') return 'blue-lighten-4'; if (day.type === 'office') return 'amber-lighten-4'; if (day.type === 'home' && day.net > 0) return 'green-lighten-4'; return 'grey'; },
         
         openEditDialog(day) { this.editingDay = day; this.dialogEditDay = true; },
-        onTypeChange(day) { if(['home', 'office'].includes(day.type)) { if(!day.start) day.start = '08:00'; if(!day.end) day.end = '16:18'; } this.saveEntry(day); },
+        onTypeChange(day) { 
+            // Automatische Zeiten
+            if(['home', 'office'].includes(day.type)) { 
+                if(!day.start) {
+                    day.start = '08:00'; 
+                    // Berechnen der Endzeit basierend auf Wochenstunden/Arbeitstage
+                    const dailyTargetHours = this.settings.weekly_hours / this.settings.workdays_per_week;
+                    let breakMin = 0;
+                    if(dailyTargetHours > 9) breakMin = 45;
+                    else if(dailyTargetHours > 6) breakMin = 30;
+                    
+                    const targetMinutes = dailyTargetHours * 60;
+                    // Start 08:00 = 480 min
+                    const endTimeMin = 480 + targetMinutes + breakMin;
+                    
+                    const h = Math.floor(endTimeMin / 60);
+                    const m = Math.round(endTimeMin % 60);
+                    const hh = (h < 10 ? '0' : '') + h;
+                    const mm = (m < 10 ? '0' : '') + m;
+                    day.end = `${hh}:${mm}`;
+                }
+            } 
+            this.saveEntry(day); 
+        },
         onTypeTime(day) { if(!day.type) day.type = 'home'; },
         changeMonth(delta) { this.currentDate = new Date(this.currentDate.setMonth(this.currentDate.getMonth() + delta)); this.loadData(); },
 
@@ -515,7 +548,7 @@
             const max_ho = workdays * daily_target * (this.settings.ho_quota_percent / 100);
             const total_work = total_ho + total_office;
             const week_count = this.items.filter(i => i.row_type === 'summary').length;
-            this.stats = { total_ho_made: total_ho, total_ho_allowed: max_ho, total_office_made: total_office, total_work_made: total_work, avg_per_week: week_count ? (total_work / week_count) : 0 };
+            this.stats = { total_ho_made: total_ho, total_ho_allowed: max_ho, total_office_made: total_office, total_work_made: total_work, avg_per_week: week_count ? (total_work / week_count) : 0, workdays_month: workdays };
         },
         saveEntry(day) { 
             // Normalisierung VOR dem Speichern
