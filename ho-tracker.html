@@ -14,10 +14,10 @@
   
   <style>
     [v-cloak] { display: none !important; }
-    body { font-family: 'Roboto', sans-serif; }
+    body { font-family: 'Roboto', sans-serif; background-color: #121212; }
     .v-field__input { padding-top: 6px !important; padding-bottom: 6px !important; min-height: 32px !important; }
     
-    /* Sticky Header Styling */
+    /* Sticky Header mit Background Fix */
     .status-bar { 
         position: sticky; top: 48px; z-index: 10;
         border-bottom: 1px solid rgba(128,128,128, 0.2);
@@ -30,10 +30,12 @@
     /* Tabellen & Listen Styling */
     .day-row { transition: background-color 0.2s; }
     .day-row:hover { background-color: rgba(128,128,128, 0.1) !important; }
+    
     .weekend, .holiday-row { background-color: rgba(128,128,128, 0.05); opacity: 0.8; }
     .is-today { border-left: 4px solid #1976D2; background-color: rgba(25, 118, 210, 0.1) !important; }
     .short-day-row { background-color: rgba(255, 152, 0, 0.05); } 
     .off-day-row { background-color: rgba(0, 0, 0, 0.02); opacity: 0.6; text-decoration: line-through; text-decoration-color: #aaa; }
+
     .week-summary-row { background-color: rgba(128,128,128, 0.1); height: 36px !important; }
     .week-summary-row td { font-weight: bold; font-size: 0.85rem; padding-top: 0 !important; padding-bottom: 0 !important; }
 
@@ -50,6 +52,7 @@
     .cal-cell.is-weekend { background-color: rgba(128,128,128, 0.03); }
     .cal-cell.is-off-day { background-color: rgba(0,0,0,0.02); opacity: 0.5; } 
     .cal-cell.is-today { border: 2px solid #1976D2; background-color: rgba(25, 118, 210, 0.1); }
+    
     .cal-date { font-weight: bold; font-size: 1rem; margin-bottom: 4px; }
     .cal-holiday-name { font-size: 0.7rem; color: #ef5350; line-height: 1.1; margin-bottom: 4px; font-weight: 500;}
     .cal-short-info { font-size: 0.7rem; color: #f57c00; font-weight: bold; margin-bottom: 4px; }
@@ -62,7 +65,7 @@
     .status-sick { background-color: rgba(244, 67, 54, 0.15); }
     .status-vacation { background-color: rgba(156, 39, 176, 0.15); }
     
-    /* Dateisystem Status */
+    /* Dateisystem Status Indikatoren (WICHTIG FÜR STANDALONE) */
     .file-status { font-size: 0.75rem; margin-right: 10px; color: #666; display: flex; align-items: center; gap: 5px; }
     .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
     .dot.green { background-color: #4caf50; }
@@ -148,14 +151,18 @@
                 </v-col>
 
                 <v-col cols="4" class="pl-2">
-                    <div class="d-flex flex-column align-end">
+                    <div class="d-flex flex-column align-end justify-center h-100">
                         
+                        <div class="text-caption text-uppercase font-weight-bold opacity-50 mb-0" style="font-size: 0.65rem !important; letter-spacing: 1px;">
+                            Home Office Budget
+                        </div>
+
                         <div class="d-flex align-center mb-1">
                              <span class="text-caption text-uppercase font-weight-bold opacity-50 mr-2" style="font-size: 0.65rem; letter-spacing: 0.5px;">Verfügbar:</span>
-                             <span class="text-subtitle-1 font-weight-bold" :class="budgetStateColor">
+                             <span class="text-subtitle-1 font-weight-bold" :class="budgetStateColor" style="line-height: 1.1;">
                                  <span v-if="budgetRemainingDays > 0">+</span>[[ formatOneDecimal(budgetRemainingDays) ]] Tage
                              </span>
-                             <span class="text-caption font-weight-medium opacity-60 ml-1" :class="budgetStateColor">
+                             <span class="text-caption font-weight-medium opacity-60 ml-2" :class="budgetStateColor">
                                  ([[ formatNum(budgetRemainingHours) ]] h)
                              </span>
                         </div>
@@ -195,6 +202,7 @@
 
         <v-container>
             <v-card elevation="0" border min-height="500">
+                
                 <v-table density="compact" v-if="viewMode === 'list'">
                     <template v-slot:default>
                         <thead>
@@ -394,7 +402,7 @@
     const vuetify = createVuetify({ theme: { defaultTheme: 'dark' } })
 
     // -------------------------------------------------------------------
-    // INDEXED DB HELPER
+    // INDEXED DB HELPER (NUR IN STANDALONE)
     // -------------------------------------------------------------------
     const IDB_NAME = 'bbk_tracker_db';
     const IDB_STORE = 'handles';
@@ -428,7 +436,7 @@
     }
 
     // -------------------------------------------------------------------
-    // DATA STORE
+    // DATA STORE (NUR IN STANDALONE)
     // -------------------------------------------------------------------
     const Store = {
         data: { settings:{}, entries:{}, customHolidays:{} },
@@ -589,12 +597,12 @@
             return this.settings.weekly_hours / activeCount;
         },
 
-        // --- PLANER LOGIC ---
+        // --- PLANER LOGIC (IDENTISCH ZU SERVER) ---
         budgetRemainingHours() {
             return this.stats.total_ho_allowed - this.stats.total_ho_made;
         },
         budgetRemainingDays() {
-            // Berechnet die Stunden zurück in Tage
+            // Berechnet die Stunden zurück in Tage (basierend auf Settings)
             const daily = this.calcDailyTarget || 7.8; 
             if(daily === 0) return 0;
             return this.budgetRemainingHours / daily;
