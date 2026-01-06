@@ -33,6 +33,9 @@
     .is-today { border-left: 4px solid #1976D2; background-color: rgba(25, 118, 210, 0.1) !important; }
     .short-day-row { background-color: rgba(255, 152, 0, 0.05); } 
 
+    /* Nicht-Arbeitstag (z.B. der freie Freitag bei Teilzeit) */
+    .off-day-row { background-color: rgba(0, 0, 0, 0.02); opacity: 0.6; text-decoration: line-through; text-decoration-color: #aaa; }
+
     .week-summary-row { background-color: rgba(128,128,128, 0.1); height: 36px !important; }
     .week-summary-row td { font-weight: bold; font-size: 0.85rem; padding-top: 0 !important; padding-bottom: 0 !important; }
 
@@ -46,6 +49,8 @@
     .cal-cell.is-holiday { background-color: rgba(244, 67, 54, 0.05); border-color: rgba(244, 67, 54, 0.2); }
     .cal-cell.is-short-day { background-color: rgba(255, 152, 0, 0.05); border-color: rgba(255, 152, 0, 0.3); }
     .cal-cell.is-weekend { background-color: rgba(128,128,128, 0.03); }
+    .cal-cell.is-off-day { background-color: rgba(0,0,0,0.02); opacity: 0.5; } 
+    
     .cal-cell.is-today { border: 2px solid #1976D2; background-color: rgba(25, 118, 210, 0.1); }
     
     .cal-date { font-weight: bold; font-size: 1rem; margin-bottom: 4px; }
@@ -129,6 +134,10 @@
                 <v-col cols="5" class="d-flex justify-center px-4">
                     <div class="d-flex" style="gap: 24px;">
                         <div class="text-center">
+                             <div class="stat-label">Arbeitstage</div><div class="stat-value">[[ stats.workdays_month ]]</div>
+                        </div>
+                        
+                        <div class="text-center">
                             <div class="stat-label">Gesamt</div><div class="stat-value">[[ formatNum(stats.total_work_made) ]] h</div>
                             <div class="text-caption text-green-darken-2" style="font-size: 0.7rem;">Ø [[ formatNum(stats.avg_per_week) ]] / Wo.</div>
                         </div>
@@ -148,7 +157,7 @@
                                 <div class="text-caption">
                                     <strong>Berechnung:</strong><br>
                                     (Summe aller täglichen Soll-Stunden) × Quote<br><br>
-                                    <em>Beispiel:</em> [[ stats.workdays_month ]] Arbeitstage mit unterschiedlicher Länge × [[ settings.ho_quota_percent ]]%
+                                    <em>Beispiel:</em> [[ stats.workdays_month ]] Arbeitstage (laut Einstellungen) × [[ settings.ho_quota_percent ]]%
                                 </div>
                             </v-tooltip>
                         </div>
@@ -189,6 +198,7 @@
                                 <tr v-if="item && item.row_type === 'day'" 
                                     :class="{
                                         'weekend': isWeekend(item), 
+                                        'off-day-row': item.is_off_day,
                                         'holiday-row': item.is_holiday,
                                         'short-day-row': item.is_short_day,
                                         'is-today': isToday(item.date),
@@ -200,15 +210,20 @@
                                         <div v-if="item.is_short_day" class="text-caption text-orange-darken-1 font-weight-bold">[[ item.holiday_name ]] (Kurz)</div>
                                     </td>
                                     <td style="min-width: 160px;">
-                                        <v-select v-model="item.type" :items="types" item-title="title" item-value="value" variant="plain" density="compact" hide-details class="mt-0 pt-0" @update:model-value="onTypeChange(item)"></v-select>
+                                        <v-select v-if="!item.is_off_day" v-model="item.type" :items="types" item-title="title" item-value="value" variant="plain" density="compact" hide-details class="mt-0 pt-0" @update:model-value="onTypeChange(item)"></v-select>
+                                        <span v-else class="text-caption opacity-50">Freier Tag</span>
                                     </td>
                                     <td>
-                                        <v-text-field v-if="needsTimeInput(item.type)" v-model="item.start" placeholder="08:00" variant="underlined" density="compact" hide-details @input="onTypeTime(item)" @change="saveEntry(item)"></v-text-field>
-                                        <span v-else-if="item.type == 'x'" class="text-caption opacity-60">Automatisch</span>
+                                        <div v-if="!item.is_off_day">
+                                            <v-text-field v-if="needsTimeInput(item.type)" v-model="item.start" placeholder="08:00" variant="underlined" density="compact" hide-details @input="onTypeTime(item)" @change="saveEntry(item)"></v-text-field>
+                                            <span v-else-if="item.type == 'x'" class="text-caption opacity-60">Automatisch</span>
+                                        </div>
                                     </td>
                                     <td>
-                                        <v-text-field v-if="needsTimeInput(item.type)" v-model="item.end" placeholder="16:00" variant="underlined" density="compact" hide-details @input="onTypeTime(item)" @change="saveEntry(item)"></v-text-field>
-                                        <span v-else-if="item.type == 'x'" class="text-caption opacity-60">Ganzer Tag</span>
+                                        <div v-if="!item.is_off_day">
+                                            <v-text-field v-if="needsTimeInput(item.type)" v-model="item.end" placeholder="16:00" variant="underlined" density="compact" hide-details @input="onTypeTime(item)" @change="saveEntry(item)"></v-text-field>
+                                            <span v-else-if="item.type == 'x'" class="text-caption opacity-60">Ganzer Tag</span>
+                                        </div>
                                     </td>
                                     <td>
                                         <v-chip size="small" :color="getChipColor(item)" v-if="item.net > 0 || item.type === 'x'" variant="flat">[[ formatNum(item.net) ]] h</v-chip>
@@ -234,12 +249,12 @@
                         <template v-for="item in items" :key="item ? item.date : 'cal-unk'">
                             <div v-if="item && item.row_type === 'day'" class="cal-cell"
                                  :class="{'is-holiday': item.is_holiday, 'is-weekend': isWeekend(item), 'is-today': isToday(item.date),
-                                    'is-short-day': item.is_short_day,
+                                    'is-short-day': item.is_short_day, 'is-off-day': item.is_off_day,
                                     'status-home': item.type === 'home' || item.type === 'x', 'status-office': item.type === 'office',
                                     'status-sick': item.type === 'sick', 'status-vacation': item.type === 'vacation'}"
                                  @click="openEditDialog(item)">
                                 <div class="d-flex justify-space-between align-start">
-                                    <span class="cal-date">[[ item.day_num ]]</span>
+                                    <span class="cal-date" :class="{'opacity-50': item.is_off_day}">[[ item.day_num ]]</span>
                                     <v-icon v-if="item.type" :color="getStatusIconColor(item.type)" size="small">[[ getStatusIcon(item.type) ]]</v-icon>
                                 </div>
                                 <div v-if="item.is_holiday" class="cal-holiday-name">[[ item.holiday_name ]]</div>
@@ -286,6 +301,9 @@
         <v-card v-if="editingDay">
             <v-card-title class="bg-primary text-white">[[ editingDay.day_num ]]. [[ currentMonthName ]] - Status</v-card-title>
             <v-card-text class="pt-4">
+                <div v-if="editingDay.is_off_day" class="text-center text-body-2 mb-4 text-orange">
+                    <v-icon color="orange">mdi-alert</v-icon> Dies ist laut deinen Einstellungen ein freier Tag.
+                </div>
                 <v-select v-model="editingDay.type" :items="types" label="Status" item-title="title" item-value="value" variant="outlined" density="comfortable" @update:model-value="onTypeChange(editingDay)"></v-select>
                 <div v-if="needsTimeInput(editingDay.type)">
                     <v-row>
@@ -305,9 +323,20 @@
           <v-card-text>
             <v-row>
               <v-col cols="12"><h3 class="text-subtitle-1 font-weight-bold mb-2">Allgemein</h3></v-col>
-              <v-col cols="4"><v-text-field v-model.number="settings.weekly_hours" label="Wochenstd." type="number" density="compact" variant="outlined"></v-text-field></v-col>
-              <v-col cols="4"><v-text-field v-model.number="settings.workdays_per_week" label="Arbeitstage/W" type="number" density="compact" variant="outlined"></v-text-field></v-col>
-              <v-col cols="4"><v-text-field v-model.number="settings.ho_quota_percent" label="HO Quote %" type="number" density="compact" variant="outlined"></v-text-field></v-col>
+              <v-col cols="6"><v-text-field v-model.number="settings.weekly_hours" label="Wochenstunden (Vertrag)" type="number" density="compact" variant="outlined"></v-text-field></v-col>
+              <v-col cols="6"><v-text-field v-model.number="settings.ho_quota_percent" label="HO Quote %" type="number" density="compact" variant="outlined"></v-text-field></v-col>
+              
+              <v-col cols="12" class="mt-0 pt-0">
+                  <div class="text-caption mb-2 font-weight-bold">Reguläre Arbeitstage (Wichtig für Teilzeit-Berechnung!)</div>
+                  <div class="d-flex justify-space-between" style="max-width: 400px">
+                      <v-checkbox v-model="settings.active_weekdays" :value="0" label="Mo" density="compact" hide-details></v-checkbox>
+                      <v-checkbox v-model="settings.active_weekdays" :value="1" label="Di" density="compact" hide-details></v-checkbox>
+                      <v-checkbox v-model="settings.active_weekdays" :value="2" label="Mi" density="compact" hide-details></v-checkbox>
+                      <v-checkbox v-model="settings.active_weekdays" :value="3" label="Do" density="compact" hide-details></v-checkbox>
+                      <v-checkbox v-model="settings.active_weekdays" :value="4" label="Fr" density="compact" hide-details></v-checkbox>
+                  </div>
+                  <div class="text-caption text-grey">Tägliches Soll (auto): [[ formatNum(calcDailyTarget) ]] Stunden</div>
+              </v-col>
             </v-row>
             <v-divider class="my-3"></v-divider>
             
@@ -318,14 +347,14 @@
                 </v-btn>
             </div>
             
-            <v-table density="compact" class="mb-3" v-if="customHolidays.length > 0">
+            <v-table density="compact" class="mb-3" v-if="Object.keys(customHolidays).length > 0">
               <template v-slot:default>
                 <thead><tr><th>Datum</th><th>Name</th><th style="width: 80px;">Soll-Std.</th><th style="width: 40px"></th></tr></thead>
                 <tbody>
-                    <tr v-for="(h, i) in customHolidays" :key="i">
+                    <tr v-for="(h, date) in customHolidays" :key="date">
                         <td>[[ h.date ]]</td><td>[[ h.name ]]</td>
                         <td><span v-if="h.hours > 0" class="text-orange font-weight-bold">[[ h.hours ]] h</span><span v-else class="text-grey">Frei</span></td>
-                        <td><v-btn icon size="x-small" variant="text" color="red" @click="deleteCustomHoliday(i)"><v-icon>mdi-delete</v-icon></v-btn></td>
+                        <td><v-btn icon size="x-small" variant="text" color="red" @click="deleteCustomHoliday(date)"><v-icon>mdi-delete</v-icon></v-btn></td>
                     </tr>
                 </tbody>
               </template>
@@ -388,24 +417,43 @@
     // DATA STORE
     // -------------------------------------------------------------------
     const Store = {
-        data: { settings:{}, entries:{}, customHolidays:[] },
+        data: { settings:{}, entries:{}, customHolidays:{} },
         init() {
             const ls = localStorage.getItem('bbk_data');
             if(ls) try { this.data = JSON.parse(ls); } catch(e){}
             if(!this.data.settings) this.data.settings = {};
             if(!this.data.entries) this.data.entries = {};
-            if(!this.data.customHolidays) this.data.customHolidays = [];
+            if(Array.isArray(this.data.customHolidays)) {
+                const map = {};
+                this.data.customHolidays.forEach(h => { if(h.date) map[h.date] = h; });
+                this.data.customHolidays = map;
+            } else if (!this.data.customHolidays) {
+                this.data.customHolidays = {};
+            }
         },
         get() { return this.data; },
-        set(newData) { this.data = newData; localStorage.setItem('bbk_data', JSON.stringify(this.data)); },
+        set(newData) { 
+            this.data = newData; 
+            if(Array.isArray(this.data.customHolidays)) {
+                const map = {};
+                this.data.customHolidays.forEach(h => { if(h.date) map[h.date] = h; });
+                this.data.customHolidays = map;
+            }
+            if(!this.data.customHolidays) this.data.customHolidays = {};
+            localStorage.setItem('bbk_data', JSON.stringify(this.data)); 
+        },
         
-        getSettings() { return { weekly_hours: 39, workdays_per_week: 5, ho_quota_percent: 60, ...this.data.settings }; },
+        getSettings() { 
+            // Default: Mo-Fr (0-4) active
+            return { weekly_hours: 39, active_weekdays: [0,1,2,3,4], ho_quota_percent: 60, ...this.data.settings }; 
+        },
         saveSettings(s) { this.data.settings = s; this.persist(); },
         getEntries() { return this.data.entries || {}; },
         saveEntry(date, entryData) { this.data.entries[date] = entryData; this.persist(); },
         deleteEntry(date) { delete this.data.entries[date]; this.persist(); },
-        getCustomHolidays() { return this.data.customHolidays || []; },
-        saveCustomHolidays(list) { this.data.customHolidays = list; this.persist(); },
+        
+        getCustomHolidays() { return this.data.customHolidays || {}; },
+        saveCustomHolidays(mapObj) { this.data.customHolidays = mapObj; this.persist(); },
 
         onPersist: null,
         persist() {
@@ -455,19 +503,16 @@
         return parseFloat(net_hours.toFixed(2));
     }
 
-    // HELPER: Ermittelt, ob ein Tag ein Custom-Feiertag ist (und ob mit Stunden)
     function getCustomHolidayInfo(dateObj) {
         const ymd = new Date(dateObj.getTime() - (dateObj.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
-        const found = Store.getCustomHolidays().find(h => h.date === ymd);
-        return found; // Returns object { date, name, hours } or undefined
+        const found = Store.getCustomHolidays()[ymd];
+        return found; 
     }
 
     function getHolidayName(dateObj) {
-        // Zuerst Custom prüfen
         const cust = getCustomHolidayInfo(dateObj);
         if(cust) return cust.name;
 
-        // Dann Gesetzliche
         const d = dateObj.getDate(), m = dateObj.getMonth() + 1, y = dateObj.getFullYear();
         if(m===12 && d===24) return "Heiligabend";
         if(m===12 && d===31) return "Silvester";
@@ -501,9 +546,10 @@
         return {
           viewMode: 'list', currentDate: new Date(), items: [], yearData: [],
           stats: { total_ho_made: 0, total_ho_allowed: 1, total_office_made: 0, total_work_made: 0, avg_per_week: 0, workdays_month: 0 }, 
-          settings: { weekly_hours: 39, workdays_per_week: 5, ho_quota_percent: 60 },
+          settings: { weekly_hours: 39, active_weekdays: [0,1,2,3,4], ho_quota_percent: 60 },
           dialogSettings: false, dialogEditDay: false, editingDay: null,
-          customHolidays: [], newCustomHoliday: { date: '', name: '', hours: 0 },
+          customHolidays: {}, 
+          newCustomHoliday: { date: '', name: '', hours: 0 },
           
           fileHandle: null, fileName: '', storedHandleName: '', unsavedChanges: false,
           types: [
@@ -522,7 +568,14 @@
         getQuotaColor() { return this.quotaPercentage > 100 ? 'red' : (this.quotaPercentage > 85 ? 'orange' : 'blue-darken-1'); },
         getQuotaColorText() { return this.quotaPercentage > 100 ? 'text-red' : 'text-blue-darken-2'; },
         paddingDays() { if(!this.items || this.items.length === 0) return 0; const firstDay = this.items.find(i => i.row_type === 'day'); return firstDay ? firstDay.weekday_index : 0; },
-        theme() { return this.$vuetify.theme }
+        theme() { return this.$vuetify.theme },
+        
+        // Neu berechnetes Tagessoll basierend auf aktiven Tagen
+        calcDailyTarget() {
+            const activeCount = this.settings.active_weekdays ? this.settings.active_weekdays.length : 5;
+            if (activeCount === 0) return 0;
+            return this.settings.weekly_hours / activeCount;
+        }
       },
       watch: {
         viewMode(newVal) {
@@ -554,7 +607,8 @@
             if(['home', 'office'].includes(day.type)) { 
                 if(!day.start) {
                     day.start = '08:00'; 
-                    const dailyTarget = day.daily_target || (this.settings.weekly_hours / this.settings.workdays_per_week);
+                    // Neues dailyTarget aus Checkboxen
+                    const dailyTarget = this.calcDailyTarget;
                     let breakMin = 0; if(dailyTarget > 9) breakMin = 45; else if(dailyTarget > 6) breakMin = 30;
                     const endMin = 480 + (dailyTarget * 60) + breakMin;
                     const h = Math.floor(endMin / 60); const m = Math.round(endMin % 60);
@@ -567,7 +621,6 @@
         changeMonth(delta) { this.currentDate = new Date(this.currentDate.setMonth(this.currentDate.getMonth() + delta)); this.loadMonthData(); },
         changeYear(delta) { this.currentDate = new Date(this.currentDate.setFullYear(this.currentDate.getFullYear() + delta)); if(this.viewMode === 'year') this.loadYearData(); else this.loadMonthData(); },
 
-        // WÄLDCHESTAG BERECHNUNG
         addWaeldchestag() {
             const y = this.currentYear;
             const a=y%19, b=Math.floor(y/100), c=y%100, dd=Math.floor(b/4), e=b%4, f=Math.floor((b+8)/25), g=Math.floor((b-f+1)/3), h=(19*a+b-dd-g+15)%30, i=Math.floor(c/4), k=c%4, l=(32+2*e+2*i-h-k)%7, m_easter=Math.floor((a+11*h+22*l)/451);
@@ -588,37 +641,48 @@
 
         // Helper für Tag-Infos
         getDayInfo(dateObj, settings, customHolidays) {
-            const std_target = settings.weekly_hours / settings.workdays_per_week;
-            let is_workday = false, target = 0.0, holiday_name = "", is_short_day = false;
+            // Soll pro Arbeitstag
+            const activeDaysCount = settings.active_weekdays ? settings.active_weekdays.length : 5;
+            const std_target = activeDaysCount > 0 ? (settings.weekly_hours / activeDaysCount) : 0;
+            
+            let is_workday = false, target = 0.0, holiday_name = "", is_short_day = false, is_off_day = false;
 
             const cust = getCustomHolidayInfo(dateObj);
-            const stdName = getHolidayName(dateObj); // Name von gesetzlichem oder Custom
+            const stdName = getHolidayName(dateObj); 
+            const weekday = (dateObj.getDay() + 6) % 7; // 0=Mo, 4=Fr, 5=Sa, 6=So
 
-            if (cust) {
+            // Prüfen, ob dieser Wochentag generell ein Arbeitstag ist (Mo-Fr Checkboxen)
+            const is_active_weekday = settings.active_weekdays && settings.active_weekdays.includes(weekday);
+
+            if (!is_active_weekday && weekday < 5) {
+                // Mo-Fr, aber nicht angehakt -> Frei (Teilzeit)
+                is_off_day = true;
+                is_workday = false;
+            } 
+            else if (cust) {
                 holiday_name = cust.name;
-                if (cust.hours && cust.hours > 0) {
+                if (cust.hours && cust.hours > 0 && is_active_weekday) {
                     is_workday = true; is_short_day = true; target = cust.hours;
                 } else {
                     is_workday = false;
                 }
             } else if (stdName) {
-                // Gesetzlicher Feiertag (und nicht Custom-überschrieben)
                 holiday_name = stdName;
                 is_workday = false;
             } else {
-                // Normaler Tag
-                const weekday = (dateObj.getDay() + 6) % 7; // 0=Mo
-                if (weekday < 5) {
+                // Normaler Tag: Nur Arbeitstag, wenn Wochentag aktiv UND nicht Wochenende
+                if (weekday < 5 && is_active_weekday) {
                     is_workday = true; target = std_target;
                 }
             }
-            return { is_workday, target, holiday_name, is_short_day };
+            return { is_workday, target, holiday_name, is_short_day, is_off_day };
         },
 
-        // LOCAL DATA LOGIC
         loadData() {
-            this.loadMonthData();
+            if(this.viewMode === 'year') this.loadYearData();
+            else this.loadMonthData();
         },
+
         loadMonthData() {
             this.settings = Store.getSettings();
             this.customHolidays = Store.getCustomHolidays();
@@ -661,6 +725,7 @@
                     is_holiday: (info.holiday_name && !info.is_workday), 
                     holiday_name: info.holiday_name,
                     is_short_day: info.is_short_day,
+                    is_off_day: info.is_off_day,
                     type: type, start: entry.start||'', end: entry.end||'', net: net,
                     daily_target: info.target
                 });
@@ -735,8 +800,8 @@
         },
         clearEntry(day) { day.type = ""; day.start = ""; day.end = ""; this.saveEntry(day); },
         saveSettings() { Store.saveSettings(this.settings); Store.saveCustomHolidays(this.customHolidays); this.dialogSettings = false; if(this.viewMode==='year') this.loadYearData(); else this.loadMonthData(); },
-        addCustomHoliday() { if(!this.newCustomHoliday.date || !this.newCustomHoliday.name) return; this.customHolidays.push({...this.newCustomHoliday}); this.newCustomHoliday = {date:'', name:''}; },
-        deleteCustomHoliday(index) { this.customHolidays.splice(index, 1); },
+        addCustomHoliday() { if(!this.newCustomHoliday.date || !this.newCustomHoliday.name) return; this.customHolidays[this.newCustomHoliday.date] = {...this.newCustomHoliday}; this.newCustomHoliday = {date:'', name:''}; },
+        deleteCustomHoliday(dateKey) { delete this.customHolidays[dateKey]; },
 
         async checkForStoredHandle() {
             try {
