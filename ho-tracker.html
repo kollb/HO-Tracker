@@ -24,8 +24,20 @@
         background: rgb(var(--v-theme-surface));
         box-shadow: 0 2px 5px rgba(0,0,0,0.05);
     }
-    .stat-label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.6; }
-    .stat-value { font-weight: 700; font-size: 0.95rem; }
+    
+    /* Labels optimiert: Fett und mit Icon-Abstand */
+    .stat-label { 
+        font-size: 0.65rem; 
+        text-transform: uppercase; 
+        letter-spacing: 0.5px; 
+        opacity: 0.7; 
+        font-weight: 600; 
+        margin-bottom: 2px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .stat-value { font-weight: 700; font-size: 0.95rem; line-height: 1.2; }
 
     /* Tabellen & Listen Styling */
     .day-row { transition: background-color 0.2s; }
@@ -137,15 +149,30 @@
                 </v-col>
 
                 <v-col cols="5" class="d-flex justify-center px-2">
-                    <div class="d-flex justify-space-around w-100" style="max-width: 400px;">
+                    <div class="d-flex justify-space-around w-100" style="max-width: 480px;">
                         <div class="text-center">
-                             <div class="stat-label">Tage</div><div class="stat-value">[[ stats.workdays_month ]]</div>
+                             <div class="stat-label">
+                                 <v-icon size="x-small" class="mr-1">mdi-calendar-check</v-icon>Arbeitstage
+                             </div>
+                             <div class="stat-value">[[ stats.workdays_month ]]</div>
                         </div>
+                        
                         <div class="text-center">
-                            <div class="stat-label">Gesamt</div><div class="stat-value">[[ formatNum(stats.total_work_made) ]]</div>
+                            <div class="stat-label">
+                                <v-icon size="x-small" class="mr-1">mdi-clock-outline</v-icon>Gesamtstd.
+                            </div>
+                            <div class="stat-value">
+                                [[ formatNum(stats.total_work_made) ]] <span class="text-caption opacity-60">h</span>
+                            </div>
                         </div>
+                        
                         <div class="text-center">
-                            <div class="stat-label">Büro</div><div class="stat-value text-amber-darken-2">[[ formatNum(stats.total_office_made) ]]</div>
+                            <div class="stat-label">
+                                <v-icon size="x-small" class="mr-1">mdi-office-building</v-icon>Bürostd.
+                            </div>
+                            <div class="stat-value text-amber-darken-2">
+                                [[ formatNum(stats.total_office_made) ]] <span class="text-caption opacity-60">h</span>
+                            </div>
                         </div>
                     </div>
                 </v-col>
