@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-  <title>Home Office Planer</title>
+  <title>Home Office Planer (Standalone)</title>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, minimal-ui">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22%231976D2%22><path d=%22M10,20V14H14V20H19V12H22L12,3L2,12H5V20H10Z%22/></svg>">
@@ -17,7 +17,7 @@
     body { font-family: 'Roboto', sans-serif; background-color: #121212; }
     .v-field__input { padding-top: 6px !important; padding-bottom: 6px !important; min-height: 32px !important; }
     
-    /* Sticky Header mit Background Fix */
+    /* Sticky Header Styling */
     .status-bar { 
         position: sticky; top: 48px; z-index: 10;
         border-bottom: 1px solid rgba(128,128,128, 0.2);
@@ -25,24 +25,15 @@
         box-shadow: 0 2px 5px rgba(0,0,0,0.05);
     }
     
-    /* Labels optimiert: Fett und mit Icon-Abstand */
     .stat-label { 
-        font-size: 0.65rem; 
-        text-transform: uppercase; 
-        letter-spacing: 0.5px; 
-        opacity: 0.7; 
-        font-weight: 600; 
-        margin-bottom: 2px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
+        font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.7; 
+        font-weight: 600; margin-bottom: 2px; display: flex; align-items: center; justify-content: center;
     }
     .stat-value { font-weight: 700; font-size: 0.95rem; line-height: 1.2; }
 
     /* Tabellen & Listen Styling */
     .day-row { transition: background-color 0.2s; }
     .day-row:hover { background-color: rgba(128,128,128, 0.1) !important; }
-    
     .weekend, .holiday-row { background-color: rgba(128,128,128, 0.05); opacity: 0.8; }
     .is-today { border-left: 4px solid #1976D2; background-color: rgba(25, 118, 210, 0.1) !important; }
     .short-day-row { background-color: rgba(255, 152, 0, 0.05); } 
@@ -51,7 +42,7 @@
     .week-summary-row { background-color: rgba(128,128,128, 0.1); height: 36px !important; }
     .week-summary-row td { font-weight: bold; font-size: 0.85rem; padding-top: 0 !important; padding-bottom: 0 !important; }
 
-    /* Kalender Grid Styling */
+    /* Kalender Styling */
     .calendar-wrapper { display: grid; grid-template-columns: repeat(7, 1fr) 60px; gap: 6px; padding: 10px; }
     .cal-header { text-align: center; font-weight: bold; font-size: 0.85rem; padding-bottom: 5px; text-transform: uppercase; opacity: 0.7; }
     .cal-cell {
@@ -64,25 +55,44 @@
     .cal-cell.is-weekend { background-color: rgba(128,128,128, 0.03); }
     .cal-cell.is-off-day { background-color: rgba(0,0,0,0.02); opacity: 0.5; } 
     .cal-cell.is-today { border: 2px solid #1976D2; background-color: rgba(25, 118, 210, 0.1); }
-    
     .cal-date { font-weight: bold; font-size: 1rem; margin-bottom: 4px; }
     .cal-holiday-name { font-size: 0.7rem; color: #ef5350; line-height: 1.1; margin-bottom: 4px; font-weight: 500;}
     .cal-short-info { font-size: 0.7rem; color: #f57c00; font-weight: bold; margin-bottom: 4px; }
     .cal-content { flex-grow: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; }
     .cal-week-sum { display: flex; align-items: center; justify-content: center; text-align: center; font-size: 0.75rem; opacity: 0.7; writing-mode: vertical-rl; transform: rotate(180deg); background: rgba(128,128,128, 0.1); border-radius: 4px; }
 
-    /* Status Farben */
     .status-home { background-color: rgba(76, 175, 80, 0.15); border-color: rgba(76, 175, 80, 0.5); }
     .status-office { background-color: rgba(255, 193, 7, 0.15); border-color: rgba(255, 193, 7, 0.5); }
     .status-sick { background-color: rgba(244, 67, 54, 0.15); }
     .status-vacation { background-color: rgba(156, 39, 176, 0.15); }
-    
-    /* Dateisystem Status Indikatoren (WICHTIG FÜR STANDALONE) */
-    .file-status { font-size: 0.75rem; margin-right: 10px; color: #666; display: flex; align-items: center; gap: 5px; }
+
+    /* ULTRAWIDE & LAYOUT FIXES */
+    .page-limit {
+        max-width: 1400px;
+        margin: 0 auto;
+        width: 100%;
+    }
+    .w-100 { width: 100% !important; }
+
+    /* Dateisystem Status (Standalone Specific) */
+    .file-status { font-size: 0.75rem; margin-right: 10px; color: rgba(255,255,255,0.7); display: flex; align-items: center; gap: 5px; }
     .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
     .dot.green { background-color: #4caf50; }
     .dot.red { background-color: #f44336; }
     .dot.orange { background-color: #ff9800; }
+
+    /* MOBILE OPTIMIERUNGEN */
+    @media (max-width: 600px) {
+        .calendar-wrapper { gap: 2px; padding: 2px; grid-template-columns: repeat(7, 1fr) 25px; }
+        .cal-cell { min-height: 50px; padding: 2px; border-radius: 4px; }
+        .cal-holiday-name, .cal-short-info, .cal-content { display: none !important; }
+        .cal-date { font-size: 0.8rem; margin: 0; }
+        .cal-cell .v-icon { position: absolute; top: 2px; right: 2px; font-size: 10px; }
+        .cal-week-sum { font-size: 0.6rem; }
+        
+        .stat-label { font-size: 0.55rem; }
+        .stat-value { font-size: 0.85rem; }
+    }
   </style>
 </head>
 <body>
@@ -90,259 +100,276 @@
   <div id="app" v-cloak>
     <v-app>
       <v-app-bar color="primary" density="compact" elevation="1">
-        <v-app-bar-title class="font-weight-bold" style="cursor: pointer" @click="goHome">
-            HO Planer
-        </v-app-bar-title>
-        <v-spacer></v-spacer>
-        
-        <div class="file-status" v-if="fileHandle">
-            <span class="dot green"></span>
-            <span class="d-none d-sm-inline">Datei: [[ fileName ]]</span>
+        <div class="d-flex align-center w-100 page-limit px-3">
+            <v-app-bar-title class="font-weight-bold" style="cursor: pointer" @click="goHome">
+                HO Planer
+            </v-app-bar-title>
+            <v-spacer></v-spacer>
+            
+            <div class="file-status" v-if="fileHandle">
+                <span class="dot green"></span>
+                <span class="d-none d-sm-inline">[[ fileName ]]</span>
+            </div>
+            <div v-else-if="storedHandleName" class="file-status">
+                <span class="dot orange"></span>
+                <span class="d-none d-sm-inline">Letzte: [[ storedHandleName ]]</span>
+                <v-btn size="x-small" color="white" variant="outlined" class="ml-2" @click="restoreFileConnection">Verbinden</v-btn>
+            </div>
+            <div class="file-status" v-else>
+                <span class="dot red"></span>
+                <span class="d-none d-sm-inline">Lokal</span>
+            </div>
+
+            <v-tooltip text="Datei öffnen / wechseln" location="bottom">
+                <template v-slot:activator="{ props }">
+                     <v-btn v-bind="props" icon="mdi-folder-open" size="small" @click="openFile" class="mr-1"></v-btn>
+                </template>
+            </v-tooltip>
+            
+            <v-tooltip text="Speichern" location="bottom">
+                <template v-slot:activator="{ props }">
+                     <v-btn v-bind="props" icon="mdi-content-save" size="small" @click="saveToFile" :disabled="!fileHandle" :color="unsavedChanges ? 'warning' : 'white'" class="mr-3"></v-btn>
+                </template>
+            </v-tooltip>
+
+            <v-divider vertical class="mx-2 my-3" color="white" thickness="2"></v-divider>
+
+            <v-btn icon @click="toggleTheme" class="mr-2">
+                <v-icon>[[ theme.global.current.dark ? 'mdi-weather-sunny' : 'mdi-weather-night' ]]</v-icon>
+            </v-btn>
+
+            <v-btn-toggle v-model="viewMode" density="compact" mandatory class="mr-3" variant="outlined" color="white" divided>
+                <v-btn value="list" icon="mdi-format-list-bulleted" @click="loadMonthData"></v-btn>
+                <v-btn value="calendar" icon="mdi-calendar-month" @click="loadMonthData"></v-btn>
+                <v-btn value="year" icon="mdi-chart-bar" @click="loadYearData"></v-btn>
+            </v-btn-toggle>
+            <v-btn icon @click="dialogSettings = true"><v-icon>mdi-cog</v-icon></v-btn>
         </div>
-        <div v-else-if="storedHandleName" class="file-status">
-            <span class="dot orange"></span>
-            <span class="d-none d-sm-inline">Letzte: [[ storedHandleName ]]</span>
-            <v-btn size="x-small" color="white" variant="outlined" class="ml-2" @click="restoreFileConnection">Verbinden</v-btn>
-        </div>
-        <div class="file-status" v-else>
-            <span class="dot red"></span>
-            <span class="d-none d-sm-inline">Lokal</span>
-        </div>
-
-        <v-tooltip text="Datei öffnen / wechseln" location="bottom">
-            <template v-slot:activator="{ props }">
-                 <v-btn v-bind="props" icon="mdi-folder-open" size="small" @click="openFile" class="mr-1"></v-btn>
-            </template>
-        </v-tooltip>
-        
-        <v-tooltip text="Speichern" location="bottom">
-            <template v-slot:activator="{ props }">
-                 <v-btn v-bind="props" icon="mdi-content-save" size="small" @click="saveToFile" :disabled="!fileHandle" :color="unsavedChanges ? 'warning' : 'white'" class="mr-3"></v-btn>
-            </template>
-        </v-tooltip>
-
-        <v-divider vertical class="mx-2 my-3" color="white" thickness="2"></v-divider>
-
-        <v-btn icon @click="toggleTheme" class="mr-2">
-            <v-icon>[[ theme.global.current.dark ? 'mdi-weather-sunny' : 'mdi-weather-night' ]]</v-icon>
-        </v-btn>
-
-        <v-btn-toggle v-model="viewMode" density="compact" mandatory class="mr-3" variant="outlined" color="white" divided>
-            <v-btn value="list" icon="mdi-format-list-bulleted" @click="loadMonthData"></v-btn>
-            <v-btn value="calendar" icon="mdi-calendar-month" @click="loadMonthData"></v-btn>
-            <v-btn value="year" icon="mdi-chart-bar" @click="loadYearData"></v-btn>
-        </v-btn-toggle>
-        <v-btn icon @click="dialogSettings = true"><v-icon>mdi-cog</v-icon></v-btn>
       </v-app-bar>
 
       <v-main>
         
-        <v-container fluid class="status-bar py-2 px-4 mb-3" v-if="viewMode !== 'year'">
-            <v-row align="center" no-gutters>
-                <v-col cols="3" class="d-flex align-center">
-                    <v-btn icon variant="text" size="small" @click="changeMonth(-1)"><v-icon>mdi-chevron-left</v-icon></v-btn>
-                    <div class="font-weight-bold mx-1 text-center" style="line-height: 1.1;">
-                        <div class="text-uppercase" style="font-size: 0.9rem;">[[ currentMonthName ]]</div>
-                        <div class="text-caption opacity-60" style="font-size: 0.7rem;">[[ currentYear ]]</div>
-                    </div>
-                    <v-btn icon variant="text" size="small" @click="changeMonth(1)"><v-icon>mdi-chevron-right</v-icon></v-btn>
-                </v-col>
-
-                <v-col cols="5" class="d-flex justify-center px-2">
-                    <div class="d-flex justify-space-around w-100" style="max-width: 480px;">
-                        <div class="text-center">
-                             <div class="stat-label">
-                                 <v-icon size="x-small" class="mr-1">mdi-calendar-check</v-icon>Arbeitstage
-                             </div>
-                             <div class="stat-value">[[ stats.workdays_month ]]</div>
+        <v-container fluid class="status-bar py-2 mb-3 px-0" v-if="viewMode !== 'year'">
+            <div class="page-limit px-3">
+                <v-row align="center" no-gutters>
+                    <v-col cols="12" md="3" class="order-1 d-flex justify-center justify-md-start align-center mb-2 mb-md-0 pl-md-4">
+                        <v-btn icon variant="text" size="small" @click="changeMonth(-1)"><v-icon>mdi-chevron-left</v-icon></v-btn>
+                        <div class="font-weight-bold mx-2 text-center" style="line-height: 1.1; min-width: 140px;">
+                            <div class="text-h6 font-weight-bold text-uppercase">[[ currentMonthName ]]</div>
+                            <div class="text-caption opacity-60">[[ currentYear ]]</div>
                         </div>
-                        
-                        <div class="text-center">
-                            <div class="stat-label">
-                                <v-icon size="x-small" class="mr-1">mdi-clock-outline</v-icon>Gesamtstd.
-                            </div>
-                            <div class="stat-value">
-                                [[ formatNum(stats.total_work_made) ]] <span class="text-caption opacity-60">h</span>
-                            </div>
-                        </div>
-                        
-                        <div class="text-center">
-                            <div class="stat-label">
-                                <v-icon size="x-small" class="mr-1">mdi-office-building</v-icon>Bürostd.
-                            </div>
-                            <div class="stat-value text-amber-darken-2">
-                                [[ formatNum(stats.total_office_made) ]] <span class="text-caption opacity-60">h</span>
-                            </div>
-                        </div>
-                    </div>
-                </v-col>
+                        <v-btn icon variant="text" size="small" @click="changeMonth(1)"><v-icon>mdi-chevron-right</v-icon></v-btn>
+                    </v-col>
 
-                <v-col cols="4" class="pl-2">
-                    <div class="d-flex flex-column align-end justify-center h-100">
-                        
-                        <div class="text-caption text-uppercase font-weight-bold opacity-50 mb-0" style="font-size: 0.65rem !important; letter-spacing: 1px;">
-                            Home Office Budget
-                        </div>
-
-                        <div class="d-flex align-center mb-1">
-                             <span class="text-caption text-uppercase font-weight-bold opacity-50 mr-2" style="font-size: 0.65rem; letter-spacing: 0.5px;">Verfügbar:</span>
-                             <span class="text-subtitle-1 font-weight-bold" :class="budgetStateColor" style="line-height: 1.1;">
-                                 <span v-if="budgetRemainingDays > 0">+</span>[[ formatOneDecimal(budgetRemainingDays) ]] Tage
-                             </span>
-                             <span class="text-caption font-weight-medium opacity-60 ml-2" :class="budgetStateColor">
-                                 ([[ formatNum(budgetRemainingHours) ]] h)
-                             </span>
-                        </div>
-                        
-                        <v-progress-linear 
-                            :model-value="quotaPercentage" 
-                            :color="getQuotaColor" 
-                            height="6" 
-                            rounded
-                            class="mb-1"
-                            style="width: 100%;"
-                            bg-color="grey-darken-3"
-                            bg-opacity="0.3"
-                        ></v-progress-linear>
-
-                        <div class="d-flex align-center mt-0">
-                            <span class="text-caption text-uppercase font-weight-bold opacity-40 mr-2" style="font-size: 0.65rem; letter-spacing: 0.5px;">Genutzt:</span>
-                            <span class="text-caption opacity-80 font-weight-medium" style="font-size: 0.75rem;">
-                                [[ formatNum(stats.total_ho_made) ]] / [[ formatNum(stats.total_ho_allowed) ]] h
-                            </span>
-                        </div>
-                    </div>
-                </v-col>
-            </v-row>
-        </v-container>
-
-        <v-container fluid class="status-bar py-3 px-4 mb-3" v-else>
-            <v-row align="center" no-gutters>
-                <v-col cols="3" class="d-flex align-center">
-                    <v-btn icon variant="text" size="small" @click="changeYear(-1)"><v-icon>mdi-chevron-left</v-icon></v-btn>
-                    <div class="font-weight-bold mx-2 text-center" style="min-width: 120px;">Jahr [[ currentYear ]]</div>
-                    <v-btn icon variant="text" size="small" @click="changeYear(1)"><v-icon>mdi-chevron-right</v-icon></v-btn>
-                </v-col>
-                <v-col cols="9" class="text-right"><span class="stat-label">Jahresübersicht</span></v-col>
-            </v-row>
-        </v-container>
-
-        <v-container>
-            <v-card elevation="0" border min-height="500">
-                
-                <v-table density="compact" v-if="viewMode === 'list'">
-                    <template v-slot:default>
-                        <thead>
-                            <tr style="background-color: rgba(128,128,128,0.05);">
-                                <th class="text-left font-weight-bold">Datum</th>
-                                <th class="text-left font-weight-bold">Status</th>
-                                <th class="text-left font-weight-bold">Start</th>
-                                <th class="text-left font-weight-bold">Ende</th>
-                                <th class="text-left font-weight-bold">Stunden</th>
-                                <th style="width: 50px;"></th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <template v-for="item in items" :key="item ? item.date : 'list-unk'">
-                                <tr v-if="item && item.row_type === 'day'" 
-                                    :class="{
-                                        'weekend': isWeekend(item), 
-                                        'off-day-row': item.is_off_day,
-                                        'holiday-row': item.is_holiday,
-                                        'short-day-row': item.is_short_day,
-                                        'is-today': isToday(item.date),
-                                        'day-row': true
-                                    }">
-                                    <td class="py-2">
-                                        <div class="font-weight-medium">[[ item.day_num ]]. [[ getGermanDay(item.weekday_index) ]]</div>
-                                        <div v-if="item.is_holiday" class="text-caption text-red-lighten-1 font-weight-bold">[[ item.holiday_name ]]</div>
-                                        <div v-if="item.is_short_day" class="text-caption text-orange-darken-1 font-weight-bold">[[ item.holiday_name ]] (Kurz)</div>
-                                    </td>
-                                    <td style="min-width: 160px;">
-                                        <v-select v-if="!item.is_off_day" v-model="item.type" :items="types" item-title="title" item-value="value" variant="plain" density="compact" hide-details class="mt-0 pt-0" @update:model-value="onTypeChange(item)"></v-select>
-                                        <span v-else class="text-caption opacity-50">Freier Tag</span>
-                                    </td>
-                                    <td>
-                                        <div v-if="!item.is_off_day">
-                                            <v-text-field v-if="needsTimeInput(item.type)" v-model="item.start" placeholder="08:00" variant="underlined" density="compact" hide-details @input="onTypeTime(item)" @change="saveEntry(item)"></v-text-field>
-                                            <span v-else-if="item.type == 'x'" class="text-caption opacity-60">Automatisch</span>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <div v-if="!item.is_off_day">
-                                            <v-text-field v-if="needsTimeInput(item.type)" v-model="item.end" placeholder="16:00" variant="underlined" density="compact" hide-details @input="onTypeTime(item)" @change="saveEntry(item)"></v-text-field>
-                                            <span v-else-if="item.type == 'x'" class="text-caption opacity-60">Ganzer Tag</span>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <v-chip size="small" :color="getChipColor(item)" v-if="item.net > 0 || item.type === 'x'" variant="flat">[[ formatNum(item.net) ]] h</v-chip>
-                                        <span v-if="item.is_short_day" class="text-caption ml-1 opacity-50">(Soll: [[ formatNum(item.daily_target) ]])</span>
-                                    </td>
-                                    <td><v-btn icon size="x-small" variant="text" class="opacity-50" @click="clearEntry(item)" v-if="item.type"><v-icon>mdi-close</v-icon></v-btn></td>
-                                </tr>
-                                <tr v-else-if="item && item.row_type === 'summary'" class="week-summary-row">
-                                    <td colspan="4" class="text-right pr-4">KW [[ item.iso_week ]] GESAMT:</td>
-                                    <td colspan="2"><span :class="getWeeklyColor(item.sum, item.target)">[[ formatNum(item.sum) ]] / [[ formatNum(item.target) ]] h</span><v-icon v-if="item.sum >= item.target" color="green" size="small" class="ml-1">mdi-check-circle</v-icon></td>
-                                </tr>
-                            </template>
-                        </tbody>
-                    </template>
-                </v-table>
-
-                <div v-else-if="viewMode === 'calendar'" class="pa-2">
-                    <div class="calendar-wrapper">
-                        <div class="cal-header">Mo</div><div class="cal-header">Di</div><div class="cal-header">Mi</div>
-                        <div class="cal-header">Do</div><div class="cal-header">Fr</div><div class="cal-header text-red">Sa</div>
-                        <div class="cal-header text-red">So</div><div class="cal-header" style="font-size: 0.7rem">KW</div>
-                        <div v-for="n in paddingDays" :key="'pad-'+n" style="background: transparent;"></div>
-                        <template v-for="item in items" :key="item ? item.date : 'cal-unk'">
-                            <div v-if="item && item.row_type === 'day'" class="cal-cell"
-                                 :class="{'is-holiday': item.is_holiday, 'is-weekend': isWeekend(item), 'is-today': isToday(item.date),
-                                    'is-short-day': item.is_short_day, 'is-off-day': item.is_off_day,
-                                    'status-home': item.type === 'home' || item.type === 'x', 'status-office': item.type === 'office',
-                                    'status-sick': item.type === 'sick', 'status-vacation': item.type === 'vacation'}"
-                                 @click="openEditDialog(item)">
-                                <div class="d-flex justify-space-between align-start">
-                                    <span class="cal-date" :class="{'opacity-50': item.is_off_day}">[[ item.day_num ]]</span>
-                                    <v-icon v-if="item.type" :color="getStatusIconColor(item.type)" size="small">[[ getStatusIcon(item.type) ]]</v-icon>
+                    <v-col cols="6" md="5" class="order-2 d-flex justify-center align-center">
+                        <div class="d-flex" style="gap: 30px;">
+                            <div class="text-center">
+                                <div class="stat-label">
+                                    <v-icon size="x-small" class="mr-1">mdi-calendar-check</v-icon>Arbeitstage
                                 </div>
-                                <div v-if="item.is_holiday" class="cal-holiday-name">[[ item.holiday_name ]]</div>
-                                <div v-if="item.is_short_day" class="cal-short-info">[[ item.holiday_name ]] (6h)</div>
-                                <div class="cal-content">
-                                    <div v-if="item.type" class="font-weight-bold text-caption text-uppercase" :style="{color: getStatusIconColor(item.type)}">[[ getTypeName(item.type) ]]</div>
-                                    <div v-if="item.net > 0 || item.type === 'x'" class="text-caption font-weight-bold">[[ formatNum(item.net) ]] h</div>
+                                <div class="stat-value">[[ stats.workdays_month ]]</div>
+                            </div>
+                            <div class="text-center">
+                                <div class="stat-label">
+                                    <v-icon size="x-small" class="mr-1">mdi-clock-outline</v-icon>Gesamtstd.
+                                </div>
+                                <div class="stat-value">
+                                    [[ formatNum(stats.total_work_made) ]] <span class="text-caption opacity-60">h</span>
                                 </div>
                             </div>
-                            <div v-else-if="item && item.row_type === 'summary'" class="cal-week-sum" :title="'KW ' + item.iso_week"><span :class="getWeeklyColor(item.sum, item.target)" class="font-weight-bold">[[ formatNum(item.sum) ]]</span></div>
+                            <div class="text-center">
+                                <div class="stat-label">
+                                    <v-icon size="x-small" class="mr-1">mdi-office-building</v-icon>Bürostd.
+                                </div>
+                                <div class="stat-value text-amber-darken-2">
+                                    [[ formatNum(stats.total_office_made) ]] <span class="text-caption opacity-60">h</span>
+                                </div>
+                            </div>
+                        </div>
+                    </v-col>
+
+                    <v-col cols="6" md="4" class="order-3 pl-2">
+                        <div class="d-flex flex-column align-end justify-center h-100">
+                            <div class="text-caption text-uppercase font-weight-bold opacity-50 mb-0" style="font-size: 0.6rem !important; letter-spacing: 1px;">
+                                Home Office Budget
+                            </div>
+                            <div class="d-flex align-center mb-1">
+                                <span class="text-caption text-uppercase font-weight-bold opacity-50 mr-2 d-none d-lg-inline" style="font-size: 0.65rem;">Verfügbar:</span>
+                                <span class="text-subtitle-1 font-weight-bold" :class="budgetStateColor" style="line-height: 1.1;">
+                                    <span v-if="budgetRemainingDays > 0">+</span>[[ formatOneDecimal(budgetRemainingDays) ]] Tage
+                                </span>
+                                <span class="text-caption font-weight-medium opacity-60 ml-2" :class="budgetStateColor">
+                                    ([[ formatNum(budgetRemainingHours) ]] h)
+                                </span>
+                            </div>
+                            <v-progress-linear :model-value="quotaPercentage" :color="getQuotaColor" height="6" rounded class="mb-1" style="width: 100%; max-width: 250px;" bg-color="grey-darken-3" bg-opacity="0.3"></v-progress-linear>
+                            <div class="d-flex align-center mt-0">
+                                <span class="text-caption text-uppercase font-weight-bold opacity-40 mr-2 d-none d-lg-inline" style="font-size: 0.65rem;">Genutzt:</span>
+                                <span class="text-caption opacity-80 font-weight-medium" style="font-size: 0.7rem;">
+                                    [[ formatNum(stats.total_ho_made) ]] / [[ formatNum(stats.total_ho_allowed) ]] h
+                                </span>
+                            </div>
+                        </div>
+                    </v-col>
+                </v-row>
+            </div>
+        </v-container>
+
+        <v-container fluid class="status-bar py-3 mb-3 px-0" v-else>
+            <div class="page-limit px-3">
+                <v-row align="center" no-gutters>
+                    <v-col cols="3" class="d-flex align-center">
+                        <v-btn icon variant="text" size="small" @click="changeYear(-1)"><v-icon>mdi-chevron-left</v-icon></v-btn>
+                        <div class="font-weight-bold mx-2 text-center" style="min-width: 120px;">Jahr [[ currentYear ]]</div>
+                        <v-btn icon variant="text" size="small" @click="changeYear(1)"><v-icon>mdi-chevron-right</v-icon></v-btn>
+                    </v-col>
+                    <v-col cols="9" class="text-right"><span class="stat-label">Jahresübersicht</span></v-col>
+                </v-row>
+            </div>
+        </v-container>
+
+        <v-container fluid class="pa-0"> 
+            <div class="page-limit px-3"> 
+                <v-card elevation="0" border min-height="500" width="100%">
+                    
+                    <v-table density="compact" v-if="viewMode === 'list'" class="d-none d-md-table w-100">
+                        <template v-slot:default>
+                            <thead>
+                                <tr style="background-color: rgba(128,128,128,0.05);">
+                                    <th class="text-left font-weight-bold" style="width: 15%">Datum</th>
+                                    <th class="text-left font-weight-bold" style="width: 20%">Status</th>
+                                    <th class="text-left font-weight-bold" style="width: 20%">Start</th>
+                                    <th class="text-left font-weight-bold" style="width: 20%">Ende</th>
+                                    <th class="text-left font-weight-bold" style="width: 20%">Stunden</th>
+                                    <th style="width: 5%"></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <template v-for="item in items" :key="item ? item.date : 'list-unk'">
+                                    <tr v-if="item && item.row_type === 'day'" 
+                                        :class="{
+                                            'weekend': isWeekend(item), 
+                                            'off-day-row': item.is_off_day,
+                                            'holiday-row': item.is_holiday,
+                                            'short-day-row': item.is_short_day,
+                                            'is-today': isToday(item.date),
+                                            'day-row': true
+                                        }">
+                                        <td class="py-2">
+                                            <div class="font-weight-medium">[[ item.day_num ]]. [[ getGermanDay(item.weekday_index) ]]</div>
+                                            <div v-if="item.is_holiday" class="text-caption text-red-lighten-1 font-weight-bold">[[ item.holiday_name ]]</div>
+                                            <div v-if="item.is_short_day" class="text-caption text-orange-darken-1 font-weight-bold">[[ item.holiday_name ]] (Kurz)</div>
+                                        </td>
+                                        <td>
+                                            <v-select v-if="!item.is_off_day" v-model="item.type" :items="types" item-title="title" item-value="value" variant="plain" density="compact" hide-details class="mt-0 pt-0" @update:model-value="onTypeChange(item)"></v-select>
+                                            <span v-else class="text-caption opacity-50">Freier Tag</span>
+                                        </td>
+                                        <td>
+                                            <div v-if="!item.is_off_day">
+                                                <v-text-field v-if="needsTimeInput(item.type)" v-model="item.start" placeholder="08:00" variant="underlined" density="compact" hide-details @input="onTypeTime(item)" @change="saveEntry(item)"></v-text-field>
+                                                <span v-else-if="item.type == 'x'" class="text-caption opacity-60">Automatisch</span>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div v-if="!item.is_off_day">
+                                                <v-text-field v-if="needsTimeInput(item.type)" v-model="item.end" placeholder="16:00" variant="underlined" density="compact" hide-details @input="onTypeTime(item)" @change="saveEntry(item)"></v-text-field>
+                                                <span v-else-if="item.type == 'x'" class="text-caption opacity-60">Ganzer Tag</span>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <v-chip size="small" :color="getChipColor(item)" v-if="item.net > 0 || item.type === 'x'" variant="flat">[[ formatNum(item.net) ]] h</v-chip>
+                                            <span v-if="item.is_short_day" class="text-caption ml-1 opacity-50">(Soll: [[ formatNum(item.daily_target) ]])</span>
+                                        </td>
+                                        <td><v-btn icon size="x-small" variant="text" class="opacity-50" @click="clearEntry(item)" v-if="item.type"><v-icon>mdi-close</v-icon></v-btn></td>
+                                    </tr>
+                                    <tr v-else-if="item && item.row_type === 'summary'" class="week-summary-row">
+                                        <td colspan="4" class="text-right pr-4">KW [[ item.iso_week ]] GESAMT:</td>
+                                        <td colspan="2"><span :class="getWeeklyColor(item.sum, item.target)">[[ formatNum(item.sum) ]] / [[ formatNum(item.target) ]] h</span><v-icon v-if="item.sum >= item.target" color="green" size="small" class="ml-1">mdi-check-circle</v-icon></td>
+                                    </tr>
+                                </template>
+                            </tbody>
+                        </template>
+                    </v-table>
+
+                    <div v-if="viewMode === 'list'" class="d-md-none pa-2">
+                        <template v-for="item in items" :key="item ? 'mob-'+item.date : 'mob-unk'">
+                            <v-card v-if="item && item.row_type === 'day'" class="mb-2" elevation="1" 
+                                    :class="{'is-today': isToday(item.date)}"
+                                    :style="item.is_off_day || isWeekend(item) ? 'opacity: 0.7; background: rgba(128,128,128,0.05)' : ''">
+                                <div class="d-flex justify-space-between align-center pa-2 pb-0">
+                                    <div>
+                                        <span class="font-weight-bold text-subtitle-1">[[ item.day_num ]]. [[ getGermanDay(item.weekday_index) ]]</span>
+                                        <span v-if="item.is_holiday" class="text-caption text-red ml-2">[[ item.holiday_name ]]</span>
+                                    </div>
+                                    <v-chip v-if="item.net > 0 || item.type === 'x'" size="small" :color="getChipColor(item)" variant="flat" class="font-weight-bold">[[ formatNum(item.net) ]] h</v-chip>
+                                </div>
+                                <div class="pa-2 pt-0" v-if="!item.is_off_day">
+                                    <v-select v-model="item.type" :items="types" label="Status" item-title="title" item-value="value" variant="underlined" density="compact" hide-details class="mb-1" @update:model-value="onTypeChange(item)"></v-select>
+                                    <div v-if="needsTimeInput(item.type)" class="d-flex mt-2" style="gap: 10px">
+                                        <v-text-field v-model="item.start" label="Start" type="time" variant="outlined" density="compact" hide-details @change="saveEntry(item)"></v-text-field>
+                                        <v-text-field v-model="item.end" label="Ende" type="time" variant="outlined" density="compact" hide-details @change="saveEntry(item)"></v-text-field>
+                                    </div>
+                                </div>
+                                <div class="d-flex justify-end pa-1" v-if="item.type">
+                                    <v-btn size="small" variant="text" color="error" @click="clearEntry(item)">Löschen</v-btn>
+                                </div>
+                            </v-card>
+                            <div v-else-if="item && item.row_type === 'summary'" class="text-center py-2 mb-2 text-caption font-weight-bold text-uppercase" style="background: rgba(128,128,128,0.1); border-radius: 4px;">
+                                KW [[ item.iso_week ]]: <span :class="getWeeklyColor(item.sum, item.target)" class="text-body-2 ml-1">[[ formatNum(item.sum) ]] / [[ formatNum(item.target) ]] h</span>
+                            </div>
                         </template>
                     </div>
-                </div>
 
-                <v-table v-if="viewMode === 'year'" density="comfortable">
-                    <template v-slot:default>
-                        <thead>
-                            <tr style="background-color: rgba(128,128,128,0.05);">
-                                <th class="text-left">Monat</th><th class="text-center">Home Office Tage</th><th class="text-center">Büro Tage</th><th class="text-center">Budget Nutzung</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr v-for="stat in yearData" :key="stat.month">
-                                <td class="font-weight-medium">[[ getGermanMonthName(stat.month) ]]</td>
-                                <td class="text-center"><v-chip size="small" color="green" variant="flat" v-if="stat.days_ho > 0">[[ stat.days_ho ]] Tage</v-chip><span v-else class="opacity-50">-</span></td>
-                                <td class="text-center"><v-chip size="small" color="amber-darken-2" variant="flat" v-if="stat.days_office > 0">[[ stat.days_office ]] Tage</v-chip><span v-else class="opacity-50">-</span></td>
-                                <td class="text-center">
-                                    <div class="d-flex align-center justify-center">
-                                        <div style="width: 120px" class="mr-2">
-                                            <v-progress-linear :model-value="stat.ho_hours_allowed ? (stat.ho_hours_made / stat.ho_hours_allowed)*100 : 0" color="blue" height="6" rounded></v-progress-linear>
-                                        </div>
-                                        <span class="text-caption">[[ formatNum(stat.ho_hours_made) ]] / [[ formatNum(stat.ho_hours_allowed) ]] h</span>
+                    <div v-else-if="viewMode === 'calendar'" class="pa-2">
+                        <div class="calendar-wrapper">
+                            <div class="cal-header">Mo</div><div class="cal-header">Di</div><div class="cal-header">Mi</div>
+                            <div class="cal-header">Do</div><div class="cal-header">Fr</div><div class="cal-header text-red">Sa</div>
+                            <div class="cal-header text-red">So</div><div class="cal-header" style="font-size: 0.7rem">KW</div>
+                            <div v-for="n in paddingDays" :key="'pad-'+n"></div>
+                            <template v-for="item in items" :key="item ? item.date : 'cal-unk'">
+                                <div v-if="item && item.row_type === 'day'" class="cal-cell"
+                                     :class="{'is-holiday': item.is_holiday, 'is-weekend': isWeekend(item), 'is-today': isToday(item.date), 'status-home': item.type === 'home' || item.type === 'x', 'status-office': item.type === 'office', 'status-sick': item.type === 'sick', 'status-vacation': item.type === 'vacation'}"
+                                     @click="openEditDialog(item)">
+                                    <div class="d-flex justify-space-between align-start">
+                                        <span class="cal-date" :class="{'opacity-50': item.is_off_day}">[[ item.day_num ]]</span>
+                                        <v-icon v-if="item.type" :color="getStatusIconColor(item.type)" size="small">[[ getStatusIcon(item.type) ]]</v-icon>
                                     </div>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </template>
-                </v-table>
-            </v-card>
+                                    <div class="cal-content">
+                                        <div v-if="item.type" class="font-weight-bold text-caption text-uppercase" :style="{color: getStatusIconColor(item.type)}">[[ getTypeName(item.type) ]]</div>
+                                        <div v-if="item.net > 0 || item.type === 'x'" class="text-caption font-weight-bold">[[ formatNum(item.net) ]] h</div>
+                                    </div>
+                                </div>
+                                <div v-else-if="item && item.row_type === 'summary'" class="cal-week-sum" :title="'KW ' + item.iso_week"><span :class="getWeeklyColor(item.sum, item.target)" class="font-weight-bold">[[ formatNum(item.sum) ]]</span></div>
+                            </template>
+                        </div>
+                    </div>
+
+                    <v-table v-if="viewMode === 'year'" density="comfortable" class="w-100">
+                        <template v-slot:default>
+                            <thead>
+                                <tr style="background-color: rgba(128,128,128,0.05);">
+                                    <th class="text-left">Monat</th><th class="text-center">Home Office Tage</th><th class="text-center">Büro Tage</th><th class="text-center">Budget Nutzung</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-for="stat in yearData" :key="stat.month">
+                                    <td class="font-weight-medium">[[ getGermanMonthName(stat.month) ]]</td>
+                                    <td class="text-center"><v-chip size="small" color="green" variant="flat" v-if="stat.days_ho > 0">[[ stat.days_ho ]] Tage</v-chip><span v-else class="opacity-50">-</span></td>
+                                    <td class="text-center"><v-chip size="small" color="amber-darken-2" variant="flat" v-if="stat.days_office > 0">[[ stat.days_office ]] Tage</v-chip><span v-else class="opacity-50">-</span></td>
+                                    <td class="text-center">
+                                        <div class="d-flex align-center justify-center">
+                                            <div style="width: 120px" class="mr-2">
+                                                <v-progress-linear :model-value="stat.ho_hours_allowed ? (stat.ho_hours_made / stat.ho_hours_allowed)*100 : 0" color="blue" height="6" rounded></v-progress-linear>
+                                            </div>
+                                            <span class="text-caption">[[ formatNum(stat.ho_hours_made) ]] / [[ formatNum(stat.ho_hours_allowed) ]] h</span>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </template>
+                    </v-table>
+                </v-card>
+            </div>
         </v-container>
       </v-main>
 
@@ -356,8 +383,8 @@
                 <v-select v-model="editingDay.type" :items="types" label="Status" item-title="title" item-value="value" variant="outlined" density="comfortable" @update:model-value="onTypeChange(editingDay)"></v-select>
                 <div v-if="needsTimeInput(editingDay.type)">
                     <v-row>
-                        <v-col cols="6"><v-text-field v-model="editingDay.start" label="Start" placeholder="08:00" variant="outlined" density="compact" @change="saveEntry(editingDay)"></v-text-field></v-col>
-                        <v-col cols="6"><v-text-field v-model="editingDay.end" label="Ende" placeholder="16:00" variant="outlined" density="compact" @change="saveEntry(editingDay)"></v-text-field></v-col>
+                        <v-col cols="6"><v-text-field v-model="editingDay.start" label="Start" placeholder="08:00" type="time" variant="outlined" density="compact" @change="saveEntry(editingDay)"></v-text-field></v-col>
+                        <v-col cols="6"><v-text-field v-model="editingDay.end" label="Ende" placeholder="16:00" type="time" variant="outlined" density="compact" @change="saveEntry(editingDay)"></v-text-field></v-col>
                     </v-row>
                     <div class="text-center text-h6 mt-2" v-if="editingDay.net > 0">[[ formatNum(editingDay.net) ]] Stunden</div>
                 </div>
@@ -376,7 +403,7 @@
               <v-col cols="6"><v-text-field v-model.number="settings.ho_quota_percent" label="HO Quote %" type="number" density="compact" variant="outlined"></v-text-field></v-col>
               
               <v-col cols="12" class="mt-0 pt-0">
-                  <div class="text-caption mb-2 font-weight-bold">Reguläre Arbeitstage (Wichtig für Teilzeit-Berechnung!)</div>
+                  <div class="text-caption mb-2 font-weight-bold">Reguläre Arbeitstage</div>
                   <div class="d-flex justify-space-between" style="max-width: 400px">
                       <v-checkbox v-model="settings.active_weekdays" :value="0" label="Mo" density="compact" hide-details></v-checkbox>
                       <v-checkbox v-model="settings.active_weekdays" :value="1" label="Di" density="compact" hide-details></v-checkbox>
@@ -390,7 +417,7 @@
             <v-divider class="my-3"></v-divider>
             
             <div class="d-flex justify-space-between align-center mb-2">
-                <h3 class="text-subtitle-1 font-weight-bold">Eigene Feiertage & Sonderregelungen</h3>
+                <h3 class="text-subtitle-1 font-weight-bold">Eigene Feiertage</h3>
                 <v-btn size="small" variant="tonal" color="primary" @click="addWaeldchestag">
                     <v-icon start>mdi-calendar-plus</v-icon> Wäldchestag [[ currentYear ]]
                 </v-btn>
@@ -414,7 +441,6 @@
               <v-col cols="2"><v-text-field v-model.number="newCustomHoliday.hours" label="Std." placeholder="0" type="number" density="compact" variant="outlined" hide-details></v-text-field></v-col>
               <v-col cols="2"><v-btn color="primary" icon size="small" @click="addCustomHoliday"><v-icon>mdi-plus</v-icon></v-btn></v-col>
             </v-row>
-            <div class="text-caption text-grey mt-1">* Std = 0 bedeutet ganzer Tag frei. Std > 0 bedeutet verkürzter Arbeitstag (Soll wird angepasst).</div>
           </v-card-text>
           <v-card-actions><v-spacer></v-spacer><v-btn color="primary" @click="saveSettings">Schließen</v-btn></v-card-actions>
         </v-card>
@@ -429,7 +455,7 @@
     const vuetify = createVuetify({ theme: { defaultTheme: 'dark' } })
 
     // -------------------------------------------------------------------
-    // INDEXED DB HELPER (NUR IN STANDALONE)
+    // INDEXED DB HELPER
     // -------------------------------------------------------------------
     const IDB_NAME = 'bbk_tracker_db';
     const IDB_STORE = 'handles';
@@ -463,7 +489,7 @@
     }
 
     // -------------------------------------------------------------------
-    // DATA STORE (NUR IN STANDALONE)
+    // DATA STORE
     // -------------------------------------------------------------------
     const Store = {
         data: { settings:{}, entries:{}, customHolidays:{} },
@@ -617,25 +643,21 @@
         paddingDays() { if(!this.items || this.items.length === 0) return 0; const firstDay = this.items.find(i => i.row_type === 'day'); return firstDay ? firstDay.weekday_index : 0; },
         theme() { return this.$vuetify.theme },
         
-        // Neu berechnetes Tagessoll basierend auf aktiven Tagen
         calcDailyTarget() {
             const activeCount = this.settings.active_weekdays ? this.settings.active_weekdays.length : 5;
             if (activeCount === 0) return 0;
             return this.settings.weekly_hours / activeCount;
         },
 
-        // --- PLANER LOGIC (IDENTISCH ZU SERVER) ---
         budgetRemainingHours() {
             return this.stats.total_ho_allowed - this.stats.total_ho_made;
         },
         budgetRemainingDays() {
-            // Berechnet die Stunden zurück in Tage (basierend auf Settings)
             const daily = this.calcDailyTarget || 7.8; 
             if(daily === 0) return 0;
             return this.budgetRemainingHours / daily;
         },
         budgetStateColor() {
-            // Färbt die Zahl: Grün bei Guthaben, Rot bei Schulden
             return this.budgetRemainingHours >= 0 ? 'text-green-accent-3' : 'text-red-accent-2';
         }
       },
@@ -653,7 +675,6 @@
         goHome() { window.location.reload(); },
         toggleTheme() { this.theme.global.name = this.theme.global.current.dark ? 'light' : 'dark'; },
         formatNum(val) { return val ? val.toFixed(2).replace('.', ',') : '0,00'; },
-        // NEU: Formatter für die große Anzeige (nur 1 Dezimalstelle)
         formatOneDecimal(val) { return val ? val.toFixed(1).replace('.', ',') : '0,0'; },
         
         getGermanDay(index) { return ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'][index] || ''; },
@@ -672,7 +693,6 @@
             if(['home', 'office'].includes(day.type)) { 
                 if(!day.start) {
                     day.start = '08:00'; 
-                    // Neues dailyTarget aus Checkboxen
                     const dailyTarget = this.calcDailyTarget;
                     let breakMin = 0; if(dailyTarget > 9) breakMin = 45; else if(dailyTarget > 6) breakMin = 30;
                     const endMin = 480 + (dailyTarget * 60) + breakMin;
@@ -704,9 +724,7 @@
             this.addCustomHoliday();
         },
 
-        // Helper für Tag-Infos
         getDayInfo(dateObj, settings, customHolidays) {
-            // Soll pro Arbeitstag
             const activeDaysCount = settings.active_weekdays ? settings.active_weekdays.length : 5;
             const std_target = activeDaysCount > 0 ? (settings.weekly_hours / activeDaysCount) : 0;
             
@@ -714,13 +732,11 @@
 
             const cust = getCustomHolidayInfo(dateObj);
             const stdName = getHolidayName(dateObj); 
-            const weekday = (dateObj.getDay() + 6) % 7; // 0=Mo, 4=Fr, 5=Sa, 6=So
+            const weekday = (dateObj.getDay() + 6) % 7; 
 
-            // Prüfen, ob dieser Wochentag generell ein Arbeitstag ist (Mo-Fr Checkboxen)
             const is_active_weekday = settings.active_weekdays && settings.active_weekdays.includes(weekday);
 
             if (!is_active_weekday && weekday < 5) {
-                // Mo-Fr, aber nicht angehakt -> Frei (Teilzeit)
                 is_off_day = true;
                 is_workday = false;
             } 
@@ -735,7 +751,6 @@
                 holiday_name = stdName;
                 is_workday = false;
             } else {
-                // Normaler Tag: Nur Arbeitstag, wenn Wochentag aktiv UND nicht Wochenende
                 if (weekday < 5 && is_active_weekday) {
                     is_workday = true; target = std_target;
                 }
