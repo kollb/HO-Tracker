@@ -70,6 +70,18 @@
     .dot.red { background-color: #f44336; }
     .dot.orange { background-color: #ff9800; }
 
+    /* Print Styles */
+    @media print {
+        body { background-color: white !important; }
+        .v-app-bar, .v-btn, .status-bar .v-btn, .v-divider { display: none !important; }
+        .status-bar { position: static !important; border: none !important; background: white !important; }
+        .v-table { border: 1px solid #333; }
+        .v-table th, .v-table td { border: 1px solid #ddd; padding: 8px !important; }
+        .cal-cell { break-inside: avoid; }
+        .v-card { box-shadow: none !important; border: 1px solid #ddd !important; }
+        @page { margin: 1cm; }
+    }
+
     @media (max-width: 600px) {
         .calendar-wrapper { gap: 2px; padding: 2px; grid-template-columns: repeat(7, 1fr) 25px; }
         .cal-cell { min-height: 50px; padding: 2px; border-radius: 4px; }
@@ -389,6 +401,26 @@
               </v-col>
             </v-row>
             <v-divider class="my-3"></v-divider>
+            <div class="d-flex justify-space-between align-center mb-2">
+                <h3 class="text-subtitle-1 font-weight-bold">Datensicherung</h3>
+            </div>
+            <v-row>
+                <v-col cols="6">
+                    <v-btn block color="primary" variant="outlined" @click="downloadBackup" prepend-icon="mdi-download">
+                        Backup herunterladen
+                    </v-btn>
+                </v-col>
+                <v-col cols="6">
+                    <v-btn block color="primary" variant="outlined" @click="triggerRestoreBackup" prepend-icon="mdi-upload">
+                        Backup wiederherstellen
+                    </v-btn>
+                    <input type="file" ref="restoreFileInput" @change="restoreBackup" accept=".json" style="display: none;">
+                </v-col>
+            </v-row>
+            <div class="text-caption text-grey mt-2">
+                Sichere deine Daten als JSON-Datei oder stelle eine frühere Sicherung wieder her.
+            </div>
+            <v-divider class="my-3"></v-divider>
             <div class="d-flex justify-space-between align-center mb-2"><h3 class="text-subtitle-1 font-weight-bold">Eigene Feiertage</h3><v-btn size="small" variant="tonal" color="primary" @click="addWaeldchestag"><v-icon start>mdi-calendar-plus</v-icon> Wäldchestag [[ currentYear ]]</v-btn></div>
             <v-table density="compact" class="mb-3" v-if="Object.keys(customHolidays).length > 0">
               <template v-slot:default>
@@ -575,8 +607,79 @@
           Store.onPersist = () => { if(this.viewMode==='year') this.loadYearData(); else this.loadMonthData(); if(this.fileHandle) this.saveToFile(); else this.unsavedChanges = true; };
           this.loadData();
           this.checkForStoredHandle();
+          this.setupKeyboardShortcuts();
       },
       methods: {
+        setupKeyboardShortcuts() {
+            document.addEventListener('keydown', (e) => {
+                // Ignore if user is typing in an input field
+                if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+                
+                // Ctrl/Cmd + S: Save
+                if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+                    e.preventDefault();
+                    if (this.fileHandle) this.saveToFile();
+                }
+                
+                // Ctrl/Cmd + O: Open file
+                if ((e.ctrlKey || e.metaKey) && e.key === 'o') {
+                    e.preventDefault();
+                    this.openFile();
+                }
+                
+                // Ctrl/Cmd + E: Export CSV (current view)
+                if ((e.ctrlKey || e.metaKey) && e.key === 'e') {
+                    e.preventDefault();
+                    this.exportToCSV(this.viewMode === 'year' ? 'year' : 'month');
+                }
+                
+                // Arrow Left: Previous month/year
+                if (e.key === 'ArrowLeft' && !e.ctrlKey && !e.metaKey) {
+                    if (this.viewMode === 'year') this.changeYear(-1);
+                    else this.changeMonth(-1);
+                }
+                
+                // Arrow Right: Next month/year
+                if (e.key === 'ArrowRight' && !e.ctrlKey && !e.metaKey) {
+                    if (this.viewMode === 'year') this.changeYear(1);
+                    else this.changeMonth(1);
+                }
+                
+                // 1: List view
+                if (e.key === '1' && !e.ctrlKey && !e.metaKey) {
+                    this.viewMode = 'list';
+                }
+                
+                // 2: Calendar view
+                if (e.key === '2' && !e.ctrlKey && !e.metaKey) {
+                    this.viewMode = 'calendar';
+                }
+                
+                // 3: Year view
+                if (e.key === '3' && !e.ctrlKey && !e.metaKey) {
+                    this.viewMode = 'year';
+                }
+                
+                // H: Go home (current month)
+                if (e.key === 'h' && !e.ctrlKey && !e.metaKey) {
+                    this.goHome();
+                }
+                
+                // ?: Show help
+                if (e.key === '?' && !e.ctrlKey && !e.metaKey) {
+                    alert('Tastenkombinationen:\n\n' +
+                          'Strg/Cmd + S: Speichern\n' +
+                          'Strg/Cmd + O: Datei öffnen\n' +
+                          'Strg/Cmd + E: CSV exportieren\n' +
+                          '← →: Monat/Jahr wechseln\n' +
+                          '1: Listenansicht\n' +
+                          '2: Kalenderansicht\n' +
+                          '3: Jahresansicht\n' +
+                          'H: Zum aktuellen Monat\n' +
+                          '?: Diese Hilfe');
+                }
+            });
+        },
         goHome() { window.location.reload(); },
         toggleTheme() { this.theme.global.name = this.theme.global.current.dark ? 'light' : 'dark'; },
         formatNum(val) { return val ? val.toFixed(2).replace('.', ',') : '0,00'; },
@@ -887,6 +990,66 @@
             } catch(e) {
                 console.error("Fehler beim CSV-Export:", e);
                 alert("Fehler beim Export: " + e.message);
+            }
+        },
+        
+        downloadBackup() {
+            try {
+                const data = Store.get();
+                const jsonStr = JSON.stringify(data, null, 2);
+                const blob = new Blob([jsonStr], { type: 'application/json' });
+                const link = document.createElement('a');
+                const url = URL.createObjectURL(blob);
+                
+                const now = new Date();
+                const dateStr = now.toISOString().split('T')[0];
+                const timeStr = now.toTimeString().split(' ')[0].replace(/:/g, '-');
+                const filename = `HO-Tracker-Backup_${dateStr}_${timeStr}.json`;
+                
+                link.setAttribute('href', url);
+                link.setAttribute('download', filename);
+                link.style.visibility = 'hidden';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
+                
+            } catch(e) {
+                console.error("Fehler beim Backup:", e);
+                alert("Fehler beim Erstellen des Backups: " + e.message);
+            }
+        },
+        
+        triggerRestoreBackup() {
+            this.$refs.restoreFileInput.click();
+        },
+        
+        async restoreBackup(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            try {
+                const text = await file.text();
+                const data = JSON.parse(text);
+                
+                // Validate data structure
+                if (!data.settings && !data.entries && !data.customHolidays) {
+                    throw new Error("Ungültige Backup-Datei. Erwartet: settings, entries oder customHolidays.");
+                }
+                
+                // Confirm before restoring
+                if (confirm("Möchtest du wirklich alle aktuellen Daten mit diesem Backup überschreiben? Diese Aktion kann nicht rückgängig gemacht werden.")) {
+                    Store.set(data);
+                    this.loadData();
+                    alert("Backup erfolgreich wiederhergestellt!");
+                }
+                
+            } catch(e) {
+                console.error("Fehler beim Wiederherstellen:", e);
+                alert("Fehler beim Wiederherstellen des Backups: " + e.message);
+            } finally {
+                // Reset file input
+                event.target.value = '';
             }
         }
       }
