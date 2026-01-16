@@ -73,7 +73,7 @@
     /* Print Styles */
     @media print {
         body { background-color: white !important; }
-        .v-app-bar, .v-btn, .status-bar .v-btn, .v-divider { display: none !important; }
+        .v-app-bar, .v-btn, .v-divider { display: none !important; }
         .status-bar { position: static !important; border: none !important; background: white !important; }
         .v-table { border: 1px solid #333; }
         .v-table th, .v-table td { border: 1px solid #ddd; padding: 8px !important; }
@@ -133,7 +133,6 @@
         <v-menu>
             <template v-slot:activator="{ props }">
                 <v-btn v-bind="props" icon="mdi-download" size="small" class="mr-3" aria-label="Daten exportieren">
-                    <v-icon>mdi-download</v-icon>
                 </v-btn>
             </template>
             <v-list density="compact">
@@ -440,6 +439,45 @@
           <v-card-actions><v-spacer></v-spacer><v-btn color="primary" @click="saveSettings">Schließen</v-btn></v-card-actions>
         </v-card>
       </v-dialog>
+
+      <v-dialog v-model="dialogHelp" max-width="500">
+        <v-card>
+          <v-card-title class="bg-primary text-white">Tastenkombinationen</v-card-title>
+          <v-card-text class="pt-4">
+            <v-list density="compact">
+              <v-list-item prepend-icon="mdi-content-save">
+                <v-list-item-title><kbd>Strg/Cmd + S</kbd></v-list-item-title>
+                <v-list-item-subtitle>Speichern</v-list-item-subtitle>
+              </v-list-item>
+              <v-list-item prepend-icon="mdi-folder-open">
+                <v-list-item-title><kbd>Strg/Cmd + O</kbd></v-list-item-title>
+                <v-list-item-subtitle>Datei öffnen</v-list-item-subtitle>
+              </v-list-item>
+              <v-list-item prepend-icon="mdi-download">
+                <v-list-item-title><kbd>Strg/Cmd + E</kbd></v-list-item-title>
+                <v-list-item-subtitle>CSV exportieren</v-list-item-subtitle>
+              </v-list-item>
+              <v-list-item prepend-icon="mdi-arrow-left-right">
+                <v-list-item-title><kbd>←</kbd> / <kbd>→</kbd></v-list-item-title>
+                <v-list-item-subtitle>Monat/Jahr wechseln</v-list-item-subtitle>
+              </v-list-item>
+              <v-list-item prepend-icon="mdi-view-dashboard">
+                <v-list-item-title><kbd>1</kbd> / <kbd>2</kbd> / <kbd>3</kbd></v-list-item-title>
+                <v-list-item-subtitle>Ansicht wechseln (Liste/Kalender/Jahr)</v-list-item-subtitle>
+              </v-list-item>
+              <v-list-item prepend-icon="mdi-home">
+                <v-list-item-title><kbd>H</kbd></v-list-item-title>
+                <v-list-item-subtitle>Zum aktuellen Monat</v-list-item-subtitle>
+              </v-list-item>
+              <v-list-item prepend-icon="mdi-help-circle">
+                <v-list-item-title><kbd>?</kbd></v-list-item-title>
+                <v-list-item-subtitle>Diese Hilfe anzeigen</v-list-item-subtitle>
+              </v-list-item>
+            </v-list>
+          </v-card-text>
+          <v-card-actions><v-spacer></v-spacer><v-btn color="primary" @click="dialogHelp = false">Schließen</v-btn></v-card-actions>
+        </v-card>
+      </v-dialog>
     </v-app>
   </div>
 
@@ -506,6 +544,9 @@
         return parseFloat(net_hours.toFixed(2));
     }
     function getCustomHolidayInfo(dateObj) { const ymd = new Date(dateObj.getTime() - (dateObj.getTimezoneOffset() * 60000)).toISOString().split('T')[0]; return Store.getCustomHolidays()[ymd]; }
+    
+    // Constants
+    const UTF8_BOM = '\ufeff'; // UTF-8 Byte Order Mark for Excel compatibility
     
     /**
      * Validates a time string in HH:MM format
@@ -583,7 +624,7 @@
           stats: { total_ho_made: 0, total_ho_allowed: 1, total_office_made: 0, total_work_made: 0, avg_per_week: 0, workdays_month: 0 }, 
           // Settings mit neuen Feldern initialisieren
           settings: { weekly_hours: 39, active_weekdays: [0,1,2,3,4], ho_quota_percent: 60, hide_weekends: false, default_start_time: '08:00', auto_convert_planned: true },
-          dialogSettings: false, dialogEditDay: false, editingDay: null, customHolidays: {}, newCustomHoliday: { date: '', name: '', hours: 0 },
+          dialogSettings: false, dialogEditDay: false, dialogHelp: false, editingDay: null, customHolidays: {}, newCustomHoliday: { date: '', name: '', hours: 0 },
           fileHandle: null, fileName: '', storedHandleName: '', unsavedChanges: false,
           validationErrors: {}, // Store validation errors by date
           types: [{ title: 'Home Office', value: 'home' }, { title: 'Büro', value: 'office' }, { title: 'Geplanter HO-Tag', value: 'x' }, { title: 'Krank', value: 'sick' }, { title: 'Urlaub', value: 'vacation' }, { title: 'Gleitzeit', value: 'glz' }, { title: 'Dienstreise', value: 'dr' }, { title: 'Leer', value: '' }]
@@ -667,16 +708,8 @@
                 
                 // ?: Show help
                 if (e.key === '?' && !e.ctrlKey && !e.metaKey) {
-                    alert('Tastenkombinationen:\n\n' +
-                          'Strg/Cmd + S: Speichern\n' +
-                          'Strg/Cmd + O: Datei öffnen\n' +
-                          'Strg/Cmd + E: CSV exportieren\n' +
-                          '← →: Monat/Jahr wechseln\n' +
-                          '1: Listenansicht\n' +
-                          '2: Kalenderansicht\n' +
-                          '3: Jahresansicht\n' +
-                          'H: Zum aktuellen Monat\n' +
-                          '?: Diese Hilfe');
+                    e.preventDefault();
+                    this.dialogHelp = true;
                 }
             });
         },
@@ -977,7 +1010,7 @@
                 }
                 
                 // Create download
-                const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
+                const blob = new Blob([UTF8_BOM + csvContent], { type: 'text/csv;charset=utf-8;' });
                 const link = document.createElement('a');
                 const url = URL.createObjectURL(blob);
                 link.setAttribute('href', url);
@@ -986,6 +1019,7 @@
                 document.body.appendChild(link);
                 link.click();
                 document.body.removeChild(link);
+                URL.revokeObjectURL(url);
                 
             } catch(e) {
                 console.error("Fehler beim CSV-Export:", e);
@@ -1032,9 +1066,9 @@
                 const text = await file.text();
                 const data = JSON.parse(text);
                 
-                // Validate data structure
+                // Validate data structure - at least one of these properties should exist
                 if (!data.settings && !data.entries && !data.customHolidays) {
-                    throw new Error("Ungültige Backup-Datei. Erwartet: settings, entries oder customHolidays.");
+                    throw new Error("Ungültige Backup-Datei. Die Datei muss mindestens settings, entries oder customHolidays enthalten.");
                 }
                 
                 // Confirm before restoring
