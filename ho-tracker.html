@@ -132,8 +132,7 @@
         
         <v-menu>
             <template v-slot:activator="{ props }">
-                <v-btn v-bind="props" icon="mdi-download" size="small" class="mr-3" aria-label="Daten exportieren">
-                </v-btn>
+                <v-btn v-bind="props" icon="mdi-download" size="small" class="mr-3" aria-label="Daten exportieren"></v-btn>
             </template>
             <v-list density="compact">
                 <v-list-item @click="exportToCSV('month')" prepend-icon="mdi-file-delimited">
@@ -559,7 +558,9 @@
         }
         
         const normalized = normalizeTimeInput(timeStr);
-        if (!normalized.match(/^\d{2}:\d{2}$/)) {
+        
+        // If normalization didn't work, the format is invalid
+        if (!normalized || !normalized.match(/^\d{2}:\d{2}$/)) {
             return { valid: false, error: 'Ungültiges Format (erwartet: HH:MM)' };
         }
         
@@ -622,8 +623,8 @@
         return {
           viewMode: 'list', currentDate: new Date(), items: [], yearData: [],
           stats: { total_ho_made: 0, total_ho_allowed: 1, total_office_made: 0, total_work_made: 0, avg_per_week: 0, workdays_month: 0 }, 
-          // Settings mit neuen Feldern initialisieren
-          settings: { weekly_hours: 39, active_weekdays: [0,1,2,3,4], ho_quota_percent: 60, hide_weekends: false, default_start_time: '08:00', auto_convert_planned: true },
+          // Settings - will be loaded from Store in mounted()
+          settings: {},
           dialogSettings: false, dialogEditDay: false, dialogHelp: false, editingDay: null, customHolidays: {}, newCustomHoliday: { date: '', name: '', hours: 0 },
           fileHandle: null, fileName: '', storedHandleName: '', unsavedChanges: false,
           validationErrors: {}, // Store validation errors by date
