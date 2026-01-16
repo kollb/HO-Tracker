@@ -37,11 +37,42 @@ Es läuft **zu 100% im Browser** (kein Server, kein Python nötig) und speichert
 * **Wäldchestag:** Gehe in die Einstellungen (Zahnrad) und klicke auf "Wäldchestag hinzufügen", um ihn für das aktuelle Jahr mit 6h Sollzeit einzutragen.
 * **Navigation:** Klicke auf den Titel "Home Office Tracker", um schnell zum aktuellen Monat zurückzukehren.
 * **Sortierung:** "Home Office" steht in der Auswahlliste immer ganz oben für schnellen Zugriff.
+* **CSV Export:** Nutze das Download-Icon (⬇), um Daten als CSV zu exportieren - für Monat oder gesamtes Jahr.
+* **Zeiteingabe:** Du kannst Zeiten in verschiedenen Formaten eingeben:
+  - `0815` wird automatisch zu `08:15`
+  - `8:15` wird zu `08:15`
+  - `8.15` wird zu `08:15`
+* **Validierung:** Das System prüft deine Zeitangaben und warnt bei ungültigen Einträgen (z.B. Endzeit vor Startzeit).
 
 ## 🛠 Technik
 
 * **Vue.js 3 & Vuetify:** Für modernes, reaktives Design.
 * **File System Access API:** Ermöglicht das direkte Schreiben in die lokale JSON-Datei (nur in Chromium-Browsern wie Chrome/Edge unterstützt).
+
+## 🔧 Fehlerbehebung
+
+**Datei lässt sich nicht öffnen/speichern:**
+* Stelle sicher, dass du einen Chromium-basierten Browser verwendest (Chrome, Edge, Brave, etc.)
+* Firefox und Safari unterstützen die File System Access API derzeit nicht vollständig
+* Prüfe, ob du die Berechtigung zum Lesen/Schreiben der Datei erteilt hast
+
+**Daten gehen verloren:**
+* Die Daten werden im Browser-LocalStorage und (optional) in deiner JSON-Datei gespeichert
+* Lösche nicht den Browser-Cache, wenn du die Datei nicht mit dem Tool verbunden hast
+* Nutze regelmäßig den CSV-Export als Backup
+* Erstelle Kopien deiner JSON-Datei als Sicherung
+
+**Zeitvalidierung zeigt Fehler:**
+* Endzeit muss nach der Startzeit liegen
+* Zeiten müssen im 24-Stunden-Format sein (0-23 Stunden, 0-59 Minuten)
+* Nutze das Format HH:MM (z.B. 08:00, 16:30)
+
+**Browser-Kompatibilität:**
+* ✅ Chrome/Chromium (ab Version 86)
+* ✅ Edge (ab Version 86)
+* ✅ Brave
+* ⚠️ Firefox (eingeschränkt, LocalStorage funktioniert)
+* ❌ Safari (File System Access API nicht unterstützt)
 
 ---
 *Viel Erfolg beim Tracken!*

@@ -108,28 +108,44 @@
 
         <v-tooltip text="Datei öffnen / wechseln" location="bottom">
             <template v-slot:activator="{ props }">
-                 <v-btn v-bind="props" icon="mdi-folder-open" size="small" @click="openFile" class="mr-1"></v-btn>
+                 <v-btn v-bind="props" icon="mdi-folder-open" size="small" @click="openFile" class="mr-1" aria-label="Datei öffnen oder wechseln"></v-btn>
             </template>
         </v-tooltip>
         
         <v-tooltip text="Speichern" location="bottom">
             <template v-slot:activator="{ props }">
-                 <v-btn v-bind="props" icon="mdi-content-save" size="small" @click="saveToFile" :disabled="!fileHandle" :color="unsavedChanges ? 'warning' : 'white'" class="mr-3"></v-btn>
+                 <v-btn v-bind="props" icon="mdi-content-save" size="small" @click="saveToFile" :disabled="!fileHandle" :color="unsavedChanges ? 'warning' : 'white'" class="mr-1" aria-label="Daten speichern"></v-btn>
             </template>
         </v-tooltip>
+        
+        <v-menu>
+            <template v-slot:activator="{ props }">
+                <v-btn v-bind="props" icon="mdi-download" size="small" class="mr-3" aria-label="Daten exportieren">
+                    <v-icon>mdi-download</v-icon>
+                </v-btn>
+            </template>
+            <v-list density="compact">
+                <v-list-item @click="exportToCSV('month')" prepend-icon="mdi-file-delimited">
+                    <v-list-item-title>Monat als CSV</v-list-item-title>
+                </v-list-item>
+                <v-list-item @click="exportToCSV('year')" prepend-icon="mdi-file-delimited">
+                    <v-list-item-title>Jahr als CSV</v-list-item-title>
+                </v-list-item>
+            </v-list>
+        </v-menu>
 
         <v-divider vertical class="mx-2 my-3" color="white" thickness="2"></v-divider>
 
-        <v-btn icon @click="toggleTheme" class="mr-2">
+        <v-btn icon @click="toggleTheme" class="mr-2" aria-label="Farbschema wechseln">
             <v-icon>[[ theme.global.current.dark ? 'mdi-weather-sunny' : 'mdi-weather-night' ]]</v-icon>
         </v-btn>
 
-        <v-btn-toggle v-model="viewMode" density="compact" mandatory class="mr-3" variant="outlined" color="white" divided>
-            <v-btn value="list" icon="mdi-format-list-bulleted" @click="loadMonthData"></v-btn>
-            <v-btn value="calendar" icon="mdi-calendar-month" @click="loadMonthData"></v-btn>
-            <v-btn value="year" icon="mdi-chart-bar" @click="loadYearData"></v-btn>
+        <v-btn-toggle v-model="viewMode" density="compact" mandatory class="mr-3" variant="outlined" color="white" divided aria-label="Ansicht wechseln">
+            <v-btn value="list" icon="mdi-format-list-bulleted" @click="loadMonthData" aria-label="Listenansicht"></v-btn>
+            <v-btn value="calendar" icon="mdi-calendar-month" @click="loadMonthData" aria-label="Kalenderansicht"></v-btn>
+            <v-btn value="year" icon="mdi-chart-bar" @click="loadYearData" aria-label="Jahresansicht"></v-btn>
         </v-btn-toggle>
-        <v-btn icon @click="dialogSettings = true"><v-icon>mdi-cog</v-icon></v-btn>
+        <v-btn icon @click="dialogSettings = true" aria-label="Einstellungen öffnen"><v-icon>mdi-cog</v-icon></v-btn>
       </v-app-bar>
 
       <v-main>
@@ -230,6 +246,9 @@
                                     <td>
                                         <v-chip size="small" :color="getChipColor(item)" v-if="item.net > 0 || item.type === 'x'" variant="flat">[[ formatNum(item.net) ]] h</v-chip>
                                         <span v-if="item.is_short_day" class="text-caption ml-1 opacity-50">(Soll: [[ formatNum(item.daily_target) ]])</span>
+                                        <div v-if="hasValidationError(item.date)" class="text-caption text-error mt-1">
+                                            <v-icon size="x-small" color="error">mdi-alert-circle</v-icon> [[ getValidationError(item.date) ]]
+                                        </div>
                                     </td>
                                     <td><v-btn icon size="x-small" variant="text" class="opacity-50" @click="clearEntry(item)" v-if="item.type"><v-icon>mdi-close</v-icon></v-btn></td>
                                 </tr>
@@ -455,6 +474,64 @@
         return parseFloat(net_hours.toFixed(2));
     }
     function getCustomHolidayInfo(dateObj) { const ymd = new Date(dateObj.getTime() - (dateObj.getTimezoneOffset() * 60000)).toISOString().split('T')[0]; return Store.getCustomHolidays()[ymd]; }
+    
+    /**
+     * Validates a time string in HH:MM format
+     * @param {string} timeStr - The time string to validate
+     * @returns {object} { valid: boolean, error: string }
+     */
+    function validateTime(timeStr) {
+        if (!timeStr || timeStr.trim() === '') {
+            return { valid: true, error: '' }; // Empty is valid (optional field)
+        }
+        
+        const normalized = normalizeTimeInput(timeStr);
+        if (!normalized.match(/^\d{2}:\d{2}$/)) {
+            return { valid: false, error: 'Ungültiges Format (erwartet: HH:MM)' };
+        }
+        
+        const [hours, minutes] = normalized.split(':').map(Number);
+        if (hours > 23 || hours < 0) {
+            return { valid: false, error: 'Stunden müssen zwischen 0 und 23 liegen' };
+        }
+        if (minutes > 59 || minutes < 0) {
+            return { valid: false, error: 'Minuten müssen zwischen 0 und 59 liegen' };
+        }
+        
+        return { valid: true, error: '' };
+    }
+    
+    /**
+     * Validates that end time is after start time
+     * @param {string} start - Start time
+     * @param {string} end - End time
+     * @returns {object} { valid: boolean, error: string }
+     */
+    function validateTimeRange(start, end) {
+        if (!start || !end) return { valid: true, error: '' };
+        
+        const startValidation = validateTime(start);
+        const endValidation = validateTime(end);
+        
+        if (!startValidation.valid) return startValidation;
+        if (!endValidation.valid) return endValidation;
+        
+        const parseToMinutes = (t) => {
+            const norm = normalizeTimeInput(t);
+            const [h, m] = norm.split(':').map(Number);
+            return h * 60 + m;
+        };
+        
+        const startMin = parseToMinutes(start);
+        const endMin = parseToMinutes(end);
+        
+        if (endMin <= startMin) {
+            return { valid: false, error: 'Endzeit muss nach Startzeit liegen' };
+        }
+        
+        return { valid: true, error: '' };
+    }
+    
     function getHolidayName(dateObj) {
         const cust = getCustomHolidayInfo(dateObj); if(cust) return cust.name;
         const d = dateObj.getDate(), m = dateObj.getMonth() + 1, y = dateObj.getFullYear();
@@ -476,6 +553,7 @@
           settings: { weekly_hours: 39, active_weekdays: [0,1,2,3,4], ho_quota_percent: 60, hide_weekends: false, default_start_time: '08:00', auto_convert_planned: true },
           dialogSettings: false, dialogEditDay: false, editingDay: null, customHolidays: {}, newCustomHoliday: { date: '', name: '', hours: 0 },
           fileHandle: null, fileName: '', storedHandleName: '', unsavedChanges: false,
+          validationErrors: {}, // Store validation errors by date
           types: [{ title: 'Home Office', value: 'home' }, { title: 'Büro', value: 'office' }, { title: 'Geplanter HO-Tag', value: 'x' }, { title: 'Krank', value: 'sick' }, { title: 'Urlaub', value: 'vacation' }, { title: 'Gleitzeit', value: 'glz' }, { title: 'Dienstreise', value: 'dr' }, { title: 'Leer', value: '' }]
         }
       },
@@ -509,6 +587,8 @@
         isWeekend(day) { return day.weekday_index >= 5; },
         isToday(dateStr) { return dateStr === new Date().toISOString().split('T')[0]; },
         needsTimeInput(type) { return ['home', 'office', '', null].includes(type); },
+        getValidationError(date) { return this.validationErrors[date] || ''; },
+        hasValidationError(date) { return !!this.validationErrors[date]; },
         getStatusIcon(type) { const map = { 'home': 'mdi-home', 'office': 'mdi-office-building', 'x': 'mdi-calendar-clock', 'sick': 'mdi-emoticon-sick', 'vacation': 'mdi-beach', 'dr': 'mdi-car' }; return map[type] || ''; },
         getStatusIconColor(type) { const map = { 'home': 'green', 'office': 'amber-darken-4', 'x': 'blue', 'sick': 'red', 'vacation': 'purple' }; return map[type] || 'grey'; },
         getTypeName(val) { const found = this.types.find(t => t.value === val); return found ? found.title : ''; },
@@ -690,12 +770,35 @@
         },
 
         saveEntry(day) { 
+            // Normalize time inputs
             if(day.start) day.start = normalizeTimeInput(day.start);
             if(day.end) day.end = normalizeTimeInput(day.end);
+            
+            // Validate time entries if type requires time input
+            if(this.needsTimeInput(day.type) && (day.start || day.end)) {
+                const validation = validateTimeRange(day.start, day.end);
+                if (!validation.valid) {
+                    this.validationErrors[day.date] = validation.error;
+                    // Show error but still allow saving to not lose data
+                    console.warn(`Validation warning for ${day.date}: ${validation.error}`);
+                } else {
+                    // Clear any previous error
+                    delete this.validationErrors[day.date];
+                }
+            } else {
+                delete this.validationErrors[day.date];
+            }
+            
             if(day.type === "") Store.deleteEntry(day.date); 
             else Store.saveEntry(day.date, { type: day.type, start: day.start, end: day.end }); 
         },
-        clearEntry(day) { day.type = ""; day.start = ""; day.end = ""; this.saveEntry(day); },
+        clearEntry(day) { 
+            day.type = ""; 
+            day.start = ""; 
+            day.end = ""; 
+            delete this.validationErrors[day.date];
+            this.saveEntry(day); 
+        },
         saveSettings() { Store.saveSettings(this.settings); Store.saveCustomHolidays(this.customHolidays); this.dialogSettings = false; if(this.viewMode==='year') this.loadYearData(); else this.loadMonthData(); },
         addCustomHoliday() { if(!this.newCustomHoliday.date || !this.newCustomHoliday.name) return; this.customHolidays[this.newCustomHoliday.date] = {...this.newCustomHoliday}; this.newCustomHoliday = {date:'', name:''}; },
         deleteCustomHoliday(dateKey) { delete this.customHolidays[dateKey]; },
@@ -703,8 +806,89 @@
         async checkForStoredHandle() { try { const handle = await idbGet('fileHandle'); if(handle) { this.storedHandleName = handle.name; } } catch(e) { console.error(e); } },
         async restoreFileConnection() { try { const handle = await idbGet('fileHandle'); if(!handle) return; const opts = { mode: 'readwrite' }; if ((await handle.queryPermission(opts)) === 'granted' || (await handle.requestPermission(opts)) === 'granted') { this.fileHandle = handle; this.fileName = handle.name; await this.loadFileContent(); } } catch(e) { console.error("Restore failed", e); alert("Konnte Verbindung nicht wiederherstellen."); } },
         async openFile() { try { if (!window.showOpenFilePicker) { alert("Browser unterstützt FileSystemAccess nicht."); return; } const [handle] = await window.showOpenFilePicker({ types: [{ description: 'JSON', accept: {'application/json': ['.json']} }], multiple: false }); this.fileHandle = handle; this.fileName = handle.name; await idbSet('fileHandle', handle); this.storedHandleName = handle.name; await this.loadFileContent(); } catch(e) {} },
-        async loadFileContent() { const file = await this.fileHandle.getFile(); const text = await file.text(); try { const json = JSON.parse(text); Store.set(json); this.loadData(); } catch(e) { Store.init(); this.saveToFile(); } },
-        async saveToFile() { if(!this.fileHandle) return; try { const writable = await this.fileHandle.createWritable(); await writable.write(JSON.stringify(Store.get(), null, 2)); await writable.close(); this.unsavedChanges = false; } catch(e) { alert("Fehler beim Speichern"); } }
+        async loadFileContent() { 
+            const file = await this.fileHandle.getFile(); 
+            const text = await file.text(); 
+            try { 
+                const json = JSON.parse(text); 
+                Store.set(json); 
+                this.loadData(); 
+            } catch(e) { 
+                console.error("Fehler beim Laden der Datei:", e);
+                alert("Fehler beim Laden der Datei. Bitte überprüfen Sie das JSON-Format.");
+                Store.init(); 
+            } 
+        },
+        async saveToFile() { 
+            if(!this.fileHandle) return; 
+            try { 
+                const writable = await this.fileHandle.createWritable(); 
+                await writable.write(JSON.stringify(Store.get(), null, 2)); 
+                await writable.close(); 
+                this.unsavedChanges = false; 
+            } catch(e) { 
+                console.error("Fehler beim Speichern:", e);
+                alert("Fehler beim Speichern: " + e.message); 
+            } 
+        },
+
+        exportToCSV(scope) {
+            try {
+                let csvContent = '';
+                let filename = '';
+                
+                if (scope === 'month') {
+                    // Export current month data
+                    csvContent = 'Datum,Wochentag,Status,Start,Ende,Stunden,Feiertag\n';
+                    filename = `HO-Tracker_${this.currentYear}-${String(this.currentMonth).padStart(2, '0')}.csv`;
+                    
+                    const dayItems = this.items.filter(i => i.row_type === 'day');
+                    dayItems.forEach(item => {
+                        const status = this.getTypeName(item.type) || '-';
+                        const start = item.start || '-';
+                        const end = item.end || '-';
+                        const hours = item.net > 0 ? this.formatNum(item.net) : '-';
+                        const holiday = item.holiday_name || '-';
+                        const weekday = this.getGermanDay(item.weekday_index);
+                        
+                        csvContent += `${item.date},${weekday},${status},${start},${end},${hours},${holiday}\n`;
+                    });
+                    
+                    // Add summary
+                    csvContent += '\n';
+                    csvContent += `Zusammenfassung\n`;
+                    csvContent += `Arbeitstage,${this.stats.workdays_month}\n`;
+                    csvContent += `Home Office Stunden,${this.formatNum(this.stats.total_ho_made)}\n`;
+                    csvContent += `Büro Stunden,${this.formatNum(this.stats.total_office_made)}\n`;
+                    csvContent += `HO Budget,${this.formatNum(this.stats.total_ho_allowed)}\n`;
+                    
+                } else if (scope === 'year') {
+                    // Export year data
+                    csvContent = 'Monat,HO Tage,Büro Tage,HO Stunden,HO Budget,Büro Stunden\n';
+                    filename = `HO-Tracker_Jahr_${this.currentYear}.csv`;
+                    
+                    this.yearData.forEach(stat => {
+                        const month = this.getGermanMonthName(stat.month);
+                        csvContent += `${month},${stat.days_ho},${stat.days_office},${this.formatNum(stat.ho_hours_made)},${this.formatNum(stat.ho_hours_allowed)},${this.formatNum(stat.office_hours_made)}\n`;
+                    });
+                }
+                
+                // Create download
+                const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
+                const link = document.createElement('a');
+                const url = URL.createObjectURL(blob);
+                link.setAttribute('href', url);
+                link.setAttribute('download', filename);
+                link.style.visibility = 'hidden';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                
+            } catch(e) {
+                console.error("Fehler beim CSV-Export:", e);
+                alert("Fehler beim Export: " + e.message);
+            }
+        }
       }
     });
     app.config.compilerOptions.delimiters = ['[[', ']]'];
