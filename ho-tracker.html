@@ -70,6 +70,18 @@
     .dot.red { background-color: #f44336; }
     .dot.orange { background-color: #ff9800; }
 
+    /* Print Styles */
+    @media print {
+        body { background-color: white !important; }
+        .v-app-bar, .v-btn, .v-divider { display: none !important; }
+        .status-bar { position: static !important; border: none !important; background: white !important; }
+        .v-table { border: 1px solid #333; }
+        .v-table th, .v-table td { border: 1px solid #ddd; padding: 8px !important; }
+        .cal-cell { break-inside: avoid; }
+        .v-card { box-shadow: none !important; border: 1px solid #ddd !important; }
+        @page { margin: 1cm; }
+    }
+
     @media (max-width: 600px) {
         .calendar-wrapper { gap: 2px; padding: 2px; grid-template-columns: repeat(7, 1fr) 25px; }
         .cal-cell { min-height: 50px; padding: 2px; border-radius: 4px; }
@@ -108,28 +120,42 @@
 
         <v-tooltip text="Datei öffnen / wechseln" location="bottom">
             <template v-slot:activator="{ props }">
-                 <v-btn v-bind="props" icon="mdi-folder-open" size="small" @click="openFile" class="mr-1"></v-btn>
+                 <v-btn v-bind="props" icon="mdi-folder-open" size="small" @click="openFile" class="mr-1" aria-label="Datei öffnen oder wechseln"></v-btn>
             </template>
         </v-tooltip>
         
         <v-tooltip text="Speichern" location="bottom">
             <template v-slot:activator="{ props }">
-                 <v-btn v-bind="props" icon="mdi-content-save" size="small" @click="saveToFile" :disabled="!fileHandle" :color="unsavedChanges ? 'warning' : 'white'" class="mr-3"></v-btn>
+                 <v-btn v-bind="props" icon="mdi-content-save" size="small" @click="saveToFile" :disabled="!fileHandle" :color="unsavedChanges ? 'warning' : 'white'" class="mr-1" aria-label="Daten speichern"></v-btn>
             </template>
         </v-tooltip>
+        
+        <v-menu>
+            <template v-slot:activator="{ props }">
+                <v-btn v-bind="props" icon="mdi-download" size="small" class="mr-3" aria-label="Daten exportieren"></v-btn>
+            </template>
+            <v-list density="compact">
+                <v-list-item @click="exportToCSV('month')" prepend-icon="mdi-file-delimited">
+                    <v-list-item-title>Monat als CSV</v-list-item-title>
+                </v-list-item>
+                <v-list-item @click="exportToCSV('year')" prepend-icon="mdi-file-delimited">
+                    <v-list-item-title>Jahr als CSV</v-list-item-title>
+                </v-list-item>
+            </v-list>
+        </v-menu>
 
         <v-divider vertical class="mx-2 my-3" color="white" thickness="2"></v-divider>
 
-        <v-btn icon @click="toggleTheme" class="mr-2">
+        <v-btn icon @click="toggleTheme" class="mr-2" aria-label="Farbschema wechseln">
             <v-icon>[[ theme.global.current.dark ? 'mdi-weather-sunny' : 'mdi-weather-night' ]]</v-icon>
         </v-btn>
 
-        <v-btn-toggle v-model="viewMode" density="compact" mandatory class="mr-3" variant="outlined" color="white" divided>
-            <v-btn value="list" icon="mdi-format-list-bulleted" @click="loadMonthData"></v-btn>
-            <v-btn value="calendar" icon="mdi-calendar-month" @click="loadMonthData"></v-btn>
-            <v-btn value="year" icon="mdi-chart-bar" @click="loadYearData"></v-btn>
+        <v-btn-toggle v-model="viewMode" density="compact" mandatory class="mr-3" variant="outlined" color="white" divided aria-label="Ansicht wechseln">
+            <v-btn value="list" icon="mdi-format-list-bulleted" @click="loadMonthData" aria-label="Listenansicht"></v-btn>
+            <v-btn value="calendar" icon="mdi-calendar-month" @click="loadMonthData" aria-label="Kalenderansicht"></v-btn>
+            <v-btn value="year" icon="mdi-chart-bar" @click="loadYearData" aria-label="Jahresansicht"></v-btn>
         </v-btn-toggle>
-        <v-btn icon @click="dialogSettings = true"><v-icon>mdi-cog</v-icon></v-btn>
+        <v-btn icon @click="dialogSettings = true" aria-label="Einstellungen öffnen"><v-icon>mdi-cog</v-icon></v-btn>
       </v-app-bar>
 
       <v-main>
@@ -230,6 +256,9 @@
                                     <td>
                                         <v-chip size="small" :color="getChipColor(item)" v-if="item.net > 0 || item.type === 'x'" variant="flat">[[ formatNum(item.net) ]] h</v-chip>
                                         <span v-if="item.is_short_day" class="text-caption ml-1 opacity-50">(Soll: [[ formatNum(item.daily_target) ]])</span>
+                                        <div v-if="hasValidationError(item.date)" class="text-caption text-error mt-1">
+                                            <v-icon size="x-small" color="error">mdi-alert-circle</v-icon> [[ getValidationError(item.date) ]]
+                                        </div>
                                     </td>
                                     <td><v-btn icon size="x-small" variant="text" class="opacity-50" @click="clearEntry(item)" v-if="item.type"><v-icon>mdi-close</v-icon></v-btn></td>
                                 </tr>
@@ -370,6 +399,26 @@
               </v-col>
             </v-row>
             <v-divider class="my-3"></v-divider>
+            <div class="d-flex justify-space-between align-center mb-2">
+                <h3 class="text-subtitle-1 font-weight-bold">Datensicherung</h3>
+            </div>
+            <v-row>
+                <v-col cols="6">
+                    <v-btn block color="primary" variant="outlined" @click="downloadBackup" prepend-icon="mdi-download">
+                        Backup herunterladen
+                    </v-btn>
+                </v-col>
+                <v-col cols="6">
+                    <v-btn block color="primary" variant="outlined" @click="triggerRestoreBackup" prepend-icon="mdi-upload">
+                        Backup wiederherstellen
+                    </v-btn>
+                    <input type="file" ref="restoreFileInput" @change="restoreBackup" accept=".json" style="display: none;">
+                </v-col>
+            </v-row>
+            <div class="text-caption text-grey mt-2">
+                Sichere deine Daten als JSON-Datei oder stelle eine frühere Sicherung wieder her.
+            </div>
+            <v-divider class="my-3"></v-divider>
             <div class="d-flex justify-space-between align-center mb-2"><h3 class="text-subtitle-1 font-weight-bold">Eigene Feiertage</h3><v-btn size="small" variant="tonal" color="primary" @click="addWaeldchestag"><v-icon start>mdi-calendar-plus</v-icon> Wäldchestag [[ currentYear ]]</v-btn></div>
             <v-table density="compact" class="mb-3" v-if="Object.keys(customHolidays).length > 0">
               <template v-slot:default>
@@ -387,6 +436,45 @@
             </v-row>
           </v-card-text>
           <v-card-actions><v-spacer></v-spacer><v-btn color="primary" @click="saveSettings">Schließen</v-btn></v-card-actions>
+        </v-card>
+      </v-dialog>
+
+      <v-dialog v-model="dialogHelp" max-width="500">
+        <v-card>
+          <v-card-title class="bg-primary text-white">Tastenkombinationen</v-card-title>
+          <v-card-text class="pt-4">
+            <v-list density="compact">
+              <v-list-item prepend-icon="mdi-content-save">
+                <v-list-item-title><kbd>Strg/Cmd + S</kbd></v-list-item-title>
+                <v-list-item-subtitle>Speichern</v-list-item-subtitle>
+              </v-list-item>
+              <v-list-item prepend-icon="mdi-folder-open">
+                <v-list-item-title><kbd>Strg/Cmd + O</kbd></v-list-item-title>
+                <v-list-item-subtitle>Datei öffnen</v-list-item-subtitle>
+              </v-list-item>
+              <v-list-item prepend-icon="mdi-download">
+                <v-list-item-title><kbd>Strg/Cmd + E</kbd></v-list-item-title>
+                <v-list-item-subtitle>CSV exportieren</v-list-item-subtitle>
+              </v-list-item>
+              <v-list-item prepend-icon="mdi-arrow-left-right">
+                <v-list-item-title><kbd>←</kbd> / <kbd>→</kbd></v-list-item-title>
+                <v-list-item-subtitle>Monat/Jahr wechseln</v-list-item-subtitle>
+              </v-list-item>
+              <v-list-item prepend-icon="mdi-view-dashboard">
+                <v-list-item-title><kbd>1</kbd> / <kbd>2</kbd> / <kbd>3</kbd></v-list-item-title>
+                <v-list-item-subtitle>Ansicht wechseln (Liste/Kalender/Jahr)</v-list-item-subtitle>
+              </v-list-item>
+              <v-list-item prepend-icon="mdi-home">
+                <v-list-item-title><kbd>H</kbd></v-list-item-title>
+                <v-list-item-subtitle>Zum aktuellen Monat</v-list-item-subtitle>
+              </v-list-item>
+              <v-list-item prepend-icon="mdi-help-circle">
+                <v-list-item-title><kbd>?</kbd></v-list-item-title>
+                <v-list-item-subtitle>Diese Hilfe anzeigen</v-list-item-subtitle>
+              </v-list-item>
+            </v-list>
+          </v-card-text>
+          <v-card-actions><v-spacer></v-spacer><v-btn color="primary" @click="dialogHelp = false">Schließen</v-btn></v-card-actions>
         </v-card>
       </v-dialog>
     </v-app>
@@ -455,6 +543,69 @@
         return parseFloat(net_hours.toFixed(2));
     }
     function getCustomHolidayInfo(dateObj) { const ymd = new Date(dateObj.getTime() - (dateObj.getTimezoneOffset() * 60000)).toISOString().split('T')[0]; return Store.getCustomHolidays()[ymd]; }
+    
+    // Constants
+    const UTF8_BOM = '\ufeff'; // UTF-8 Byte Order Mark for Excel compatibility
+    
+    /**
+     * Validates a time string in HH:MM format
+     * @param {string} timeStr - The time string to validate
+     * @returns {object} { valid: boolean, error: string }
+     */
+    function validateTime(timeStr) {
+        if (!timeStr || timeStr.trim() === '') {
+            return { valid: true, error: '' }; // Empty is valid (optional field)
+        }
+        
+        const normalized = normalizeTimeInput(timeStr);
+        
+        // If normalization didn't work, the format is invalid
+        if (!normalized || !normalized.match(/^\d{2}:\d{2}$/)) {
+            return { valid: false, error: 'Ungültiges Format (erwartet: HH:MM)' };
+        }
+        
+        const [hours, minutes] = normalized.split(':').map(Number);
+        if (hours > 23 || hours < 0) {
+            return { valid: false, error: 'Stunden müssen zwischen 0 und 23 liegen' };
+        }
+        if (minutes > 59 || minutes < 0) {
+            return { valid: false, error: 'Minuten müssen zwischen 0 und 59 liegen' };
+        }
+        
+        return { valid: true, error: '' };
+    }
+    
+    /**
+     * Validates that end time is after start time
+     * @param {string} start - Start time
+     * @param {string} end - End time
+     * @returns {object} { valid: boolean, error: string }
+     */
+    function validateTimeRange(start, end) {
+        if (!start || !end) return { valid: true, error: '' };
+        
+        const startValidation = validateTime(start);
+        const endValidation = validateTime(end);
+        
+        if (!startValidation.valid) return startValidation;
+        if (!endValidation.valid) return endValidation;
+        
+        const parseToMinutes = (t) => {
+            const norm = normalizeTimeInput(t);
+            const [h, m] = norm.split(':').map(Number);
+            return h * 60 + m;
+        };
+        
+        const startMin = parseToMinutes(start);
+        const endMin = parseToMinutes(end);
+        
+        if (endMin <= startMin) {
+            return { valid: false, error: 'Endzeit muss nach Startzeit liegen' };
+        }
+        
+        return { valid: true, error: '' };
+    }
+    
     function getHolidayName(dateObj) {
         const cust = getCustomHolidayInfo(dateObj); if(cust) return cust.name;
         const d = dateObj.getDate(), m = dateObj.getMonth() + 1, y = dateObj.getFullYear();
@@ -472,10 +623,11 @@
         return {
           viewMode: 'list', currentDate: new Date(), items: [], yearData: [],
           stats: { total_ho_made: 0, total_ho_allowed: 1, total_office_made: 0, total_work_made: 0, avg_per_week: 0, workdays_month: 0 }, 
-          // Settings mit neuen Feldern initialisieren
-          settings: { weekly_hours: 39, active_weekdays: [0,1,2,3,4], ho_quota_percent: 60, hide_weekends: false, default_start_time: '08:00', auto_convert_planned: true },
-          dialogSettings: false, dialogEditDay: false, editingDay: null, customHolidays: {}, newCustomHoliday: { date: '', name: '', hours: 0 },
+          // Settings - will be loaded from Store in mounted()
+          settings: {},
+          dialogSettings: false, dialogEditDay: false, dialogHelp: false, editingDay: null, customHolidays: {}, newCustomHoliday: { date: '', name: '', hours: 0 },
           fileHandle: null, fileName: '', storedHandleName: '', unsavedChanges: false,
+          validationErrors: {}, // Store validation errors by date
           types: [{ title: 'Home Office', value: 'home' }, { title: 'Büro', value: 'office' }, { title: 'Geplanter HO-Tag', value: 'x' }, { title: 'Krank', value: 'sick' }, { title: 'Urlaub', value: 'vacation' }, { title: 'Gleitzeit', value: 'glz' }, { title: 'Dienstreise', value: 'dr' }, { title: 'Leer', value: '' }]
         }
       },
@@ -497,8 +649,71 @@
           Store.onPersist = () => { if(this.viewMode==='year') this.loadYearData(); else this.loadMonthData(); if(this.fileHandle) this.saveToFile(); else this.unsavedChanges = true; };
           this.loadData();
           this.checkForStoredHandle();
+          this.setupKeyboardShortcuts();
       },
       methods: {
+        setupKeyboardShortcuts() {
+            document.addEventListener('keydown', (e) => {
+                // Ignore if user is typing in an input field
+                if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+                
+                // Ctrl/Cmd + S: Save
+                if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+                    e.preventDefault();
+                    if (this.fileHandle) this.saveToFile();
+                }
+                
+                // Ctrl/Cmd + O: Open file
+                if ((e.ctrlKey || e.metaKey) && e.key === 'o') {
+                    e.preventDefault();
+                    this.openFile();
+                }
+                
+                // Ctrl/Cmd + E: Export CSV (current view)
+                if ((e.ctrlKey || e.metaKey) && e.key === 'e') {
+                    e.preventDefault();
+                    this.exportToCSV(this.viewMode === 'year' ? 'year' : 'month');
+                }
+                
+                // Arrow Left: Previous month/year
+                if (e.key === 'ArrowLeft' && !e.ctrlKey && !e.metaKey) {
+                    if (this.viewMode === 'year') this.changeYear(-1);
+                    else this.changeMonth(-1);
+                }
+                
+                // Arrow Right: Next month/year
+                if (e.key === 'ArrowRight' && !e.ctrlKey && !e.metaKey) {
+                    if (this.viewMode === 'year') this.changeYear(1);
+                    else this.changeMonth(1);
+                }
+                
+                // 1: List view
+                if (e.key === '1' && !e.ctrlKey && !e.metaKey) {
+                    this.viewMode = 'list';
+                }
+                
+                // 2: Calendar view
+                if (e.key === '2' && !e.ctrlKey && !e.metaKey) {
+                    this.viewMode = 'calendar';
+                }
+                
+                // 3: Year view
+                if (e.key === '3' && !e.ctrlKey && !e.metaKey) {
+                    this.viewMode = 'year';
+                }
+                
+                // H: Go home (current month)
+                if (e.key === 'h' && !e.ctrlKey && !e.metaKey) {
+                    this.goHome();
+                }
+                
+                // ?: Show help
+                if (e.key === '?' && !e.ctrlKey && !e.metaKey) {
+                    e.preventDefault();
+                    this.dialogHelp = true;
+                }
+            });
+        },
         goHome() { window.location.reload(); },
         toggleTheme() { this.theme.global.name = this.theme.global.current.dark ? 'light' : 'dark'; },
         formatNum(val) { return val ? val.toFixed(2).replace('.', ',') : '0,00'; },
@@ -509,6 +724,8 @@
         isWeekend(day) { return day.weekday_index >= 5; },
         isToday(dateStr) { return dateStr === new Date().toISOString().split('T')[0]; },
         needsTimeInput(type) { return ['home', 'office', '', null].includes(type); },
+        getValidationError(date) { return this.validationErrors[date] || ''; },
+        hasValidationError(date) { return !!this.validationErrors[date]; },
         getStatusIcon(type) { const map = { 'home': 'mdi-home', 'office': 'mdi-office-building', 'x': 'mdi-calendar-clock', 'sick': 'mdi-emoticon-sick', 'vacation': 'mdi-beach', 'dr': 'mdi-car' }; return map[type] || ''; },
         getStatusIconColor(type) { const map = { 'home': 'green', 'office': 'amber-darken-4', 'x': 'blue', 'sick': 'red', 'vacation': 'purple' }; return map[type] || 'grey'; },
         getTypeName(val) { const found = this.types.find(t => t.value === val); return found ? found.title : ''; },
@@ -690,12 +907,35 @@
         },
 
         saveEntry(day) { 
+            // Normalize time inputs
             if(day.start) day.start = normalizeTimeInput(day.start);
             if(day.end) day.end = normalizeTimeInput(day.end);
+            
+            // Validate time entries if type requires time input
+            if(this.needsTimeInput(day.type) && (day.start || day.end)) {
+                const validation = validateTimeRange(day.start, day.end);
+                if (!validation.valid) {
+                    this.validationErrors[day.date] = validation.error;
+                    // Show error but still allow saving to not lose data
+                    console.warn(`Validation warning for ${day.date}: ${validation.error}`);
+                } else {
+                    // Clear any previous error
+                    delete this.validationErrors[day.date];
+                }
+            } else {
+                delete this.validationErrors[day.date];
+            }
+            
             if(day.type === "") Store.deleteEntry(day.date); 
             else Store.saveEntry(day.date, { type: day.type, start: day.start, end: day.end }); 
         },
-        clearEntry(day) { day.type = ""; day.start = ""; day.end = ""; this.saveEntry(day); },
+        clearEntry(day) { 
+            day.type = ""; 
+            day.start = ""; 
+            day.end = ""; 
+            delete this.validationErrors[day.date];
+            this.saveEntry(day); 
+        },
         saveSettings() { Store.saveSettings(this.settings); Store.saveCustomHolidays(this.customHolidays); this.dialogSettings = false; if(this.viewMode==='year') this.loadYearData(); else this.loadMonthData(); },
         addCustomHoliday() { if(!this.newCustomHoliday.date || !this.newCustomHoliday.name) return; this.customHolidays[this.newCustomHoliday.date] = {...this.newCustomHoliday}; this.newCustomHoliday = {date:'', name:''}; },
         deleteCustomHoliday(dateKey) { delete this.customHolidays[dateKey]; },
@@ -703,8 +943,150 @@
         async checkForStoredHandle() { try { const handle = await idbGet('fileHandle'); if(handle) { this.storedHandleName = handle.name; } } catch(e) { console.error(e); } },
         async restoreFileConnection() { try { const handle = await idbGet('fileHandle'); if(!handle) return; const opts = { mode: 'readwrite' }; if ((await handle.queryPermission(opts)) === 'granted' || (await handle.requestPermission(opts)) === 'granted') { this.fileHandle = handle; this.fileName = handle.name; await this.loadFileContent(); } } catch(e) { console.error("Restore failed", e); alert("Konnte Verbindung nicht wiederherstellen."); } },
         async openFile() { try { if (!window.showOpenFilePicker) { alert("Browser unterstützt FileSystemAccess nicht."); return; } const [handle] = await window.showOpenFilePicker({ types: [{ description: 'JSON', accept: {'application/json': ['.json']} }], multiple: false }); this.fileHandle = handle; this.fileName = handle.name; await idbSet('fileHandle', handle); this.storedHandleName = handle.name; await this.loadFileContent(); } catch(e) {} },
-        async loadFileContent() { const file = await this.fileHandle.getFile(); const text = await file.text(); try { const json = JSON.parse(text); Store.set(json); this.loadData(); } catch(e) { Store.init(); this.saveToFile(); } },
-        async saveToFile() { if(!this.fileHandle) return; try { const writable = await this.fileHandle.createWritable(); await writable.write(JSON.stringify(Store.get(), null, 2)); await writable.close(); this.unsavedChanges = false; } catch(e) { alert("Fehler beim Speichern"); } }
+        async loadFileContent() { 
+            const file = await this.fileHandle.getFile(); 
+            const text = await file.text(); 
+            try { 
+                const json = JSON.parse(text); 
+                Store.set(json); 
+                this.loadData(); 
+            } catch(e) { 
+                console.error("Fehler beim Laden der Datei:", e);
+                alert("Fehler beim Laden der Datei. Bitte überprüfen Sie das JSON-Format.");
+                Store.init(); 
+            } 
+        },
+        async saveToFile() { 
+            if(!this.fileHandle) return; 
+            try { 
+                const writable = await this.fileHandle.createWritable(); 
+                await writable.write(JSON.stringify(Store.get(), null, 2)); 
+                await writable.close(); 
+                this.unsavedChanges = false; 
+            } catch(e) { 
+                console.error("Fehler beim Speichern:", e);
+                alert("Fehler beim Speichern: " + e.message); 
+            } 
+        },
+
+        exportToCSV(scope) {
+            try {
+                let csvContent = '';
+                let filename = '';
+                
+                if (scope === 'month') {
+                    // Export current month data
+                    csvContent = 'Datum,Wochentag,Status,Start,Ende,Stunden,Feiertag\n';
+                    filename = `HO-Tracker_${this.currentYear}-${String(this.currentMonth).padStart(2, '0')}.csv`;
+                    
+                    const dayItems = this.items.filter(i => i.row_type === 'day');
+                    dayItems.forEach(item => {
+                        const status = this.getTypeName(item.type) || '-';
+                        const start = item.start || '-';
+                        const end = item.end || '-';
+                        const hours = item.net > 0 ? this.formatNum(item.net) : '-';
+                        const holiday = item.holiday_name || '-';
+                        const weekday = this.getGermanDay(item.weekday_index);
+                        
+                        csvContent += `${item.date},${weekday},${status},${start},${end},${hours},${holiday}\n`;
+                    });
+                    
+                    // Add summary
+                    csvContent += '\n';
+                    csvContent += `Zusammenfassung\n`;
+                    csvContent += `Arbeitstage,${this.stats.workdays_month}\n`;
+                    csvContent += `Home Office Stunden,${this.formatNum(this.stats.total_ho_made)}\n`;
+                    csvContent += `Büro Stunden,${this.formatNum(this.stats.total_office_made)}\n`;
+                    csvContent += `HO Budget,${this.formatNum(this.stats.total_ho_allowed)}\n`;
+                    
+                } else if (scope === 'year') {
+                    // Export year data
+                    csvContent = 'Monat,HO Tage,Büro Tage,HO Stunden,HO Budget,Büro Stunden\n';
+                    filename = `HO-Tracker_Jahr_${this.currentYear}.csv`;
+                    
+                    this.yearData.forEach(stat => {
+                        const month = this.getGermanMonthName(stat.month);
+                        csvContent += `${month},${stat.days_ho},${stat.days_office},${this.formatNum(stat.ho_hours_made)},${this.formatNum(stat.ho_hours_allowed)},${this.formatNum(stat.office_hours_made)}\n`;
+                    });
+                }
+                
+                // Create download
+                const blob = new Blob([UTF8_BOM + csvContent], { type: 'text/csv;charset=utf-8;' });
+                const link = document.createElement('a');
+                const url = URL.createObjectURL(blob);
+                link.setAttribute('href', url);
+                link.setAttribute('download', filename);
+                link.style.visibility = 'hidden';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
+                
+            } catch(e) {
+                console.error("Fehler beim CSV-Export:", e);
+                alert("Fehler beim Export: " + e.message);
+            }
+        },
+        
+        downloadBackup() {
+            try {
+                const data = Store.get();
+                const jsonStr = JSON.stringify(data, null, 2);
+                const blob = new Blob([jsonStr], { type: 'application/json' });
+                const link = document.createElement('a');
+                const url = URL.createObjectURL(blob);
+                
+                const now = new Date();
+                const dateStr = now.toISOString().split('T')[0];
+                const timeStr = now.toTimeString().split(' ')[0].replace(/:/g, '-');
+                const filename = `HO-Tracker-Backup_${dateStr}_${timeStr}.json`;
+                
+                link.setAttribute('href', url);
+                link.setAttribute('download', filename);
+                link.style.visibility = 'hidden';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
+                
+            } catch(e) {
+                console.error("Fehler beim Backup:", e);
+                alert("Fehler beim Erstellen des Backups: " + e.message);
+            }
+        },
+        
+        triggerRestoreBackup() {
+            this.$refs.restoreFileInput.click();
+        },
+        
+        async restoreBackup(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            try {
+                const text = await file.text();
+                const data = JSON.parse(text);
+                
+                // Validate data structure - at least one of these properties should exist
+                if (!data.settings && !data.entries && !data.customHolidays) {
+                    throw new Error("Ungültige Backup-Datei. Die Datei muss mindestens settings, entries oder customHolidays enthalten.");
+                }
+                
+                // Confirm before restoring
+                if (confirm("Möchtest du wirklich alle aktuellen Daten mit diesem Backup überschreiben? Diese Aktion kann nicht rückgängig gemacht werden.")) {
+                    Store.set(data);
+                    this.loadData();
+                    alert("Backup erfolgreich wiederhergestellt!");
+                }
+                
+            } catch(e) {
+                console.error("Fehler beim Wiederherstellen:", e);
+                alert("Fehler beim Wiederherstellen des Backups: " + e.message);
+            } finally {
+                // Reset file input
+                event.target.value = '';
+            }
+        }
       }
     });
     app.config.compilerOptions.delimiters = ['[[', ']]'];
