@@ -1,0 +1,81 @@
+{
+  "settings": {
+    "weekly_hours": 39,
+    "active_weekdays": [
+      0,
+      1,
+      2,
+      3,
+      4
+    ],
+    "ho_quota_percent": 60,
+    "hide_weekends": true,
+    "default_start_time": "08:00",
+    "auto_convert_planned": true,
+    "workdays_per_week": 5
+  },
+  "entries": {
+    "2026-01-02": {
+      "type": "home",
+      "start": "08:00",
+      "end": "16:18"
+    },
+    "2026-01-03": {
+      "type": "home",
+      "start": "",
+      "end": ""
+    },
+    "2026-01-04": {
+      "type": "sick",
+      "start": "",
+      "end": ""
+    },
+    "2026-01-09": {
+      "type": "dr",
+      "start": "",
+      "end": ""
+    },
+    "2026-01-05": {
+      "type": "home",
+      "start": "08:00",
+      "end": "16:18"
+    },
+    "2026-01-06": {
+      "type": "home",
+      "start": "08:00",
+      "end": "16:18"
+    },
+    "2026-01-26": {
+      "type": "dr",
+      "start": "",
+      "end": ""
+    },
+    "2026-01-27": {
+      "type": "sick",
+      "start": "",
+      "end": ""
+    },
+    "2026-01-28": {
+      "type": "x",
+      "start": "",
+      "end": ""
+    },
+    "2026-01-29": {
+      "type": "home",
+      "start": "08:00",
+      "end": "16:18"
+    },
+    "2026-01-08": {
+      "type": "home",
+      "start": "08:17",
+      "end": "16:12"
+    }
+  },
+  "customHolidays": {
+    "2026-05-26": {
+      "date": "2026-05-26",
+      "name": "Wäldchestag",
+      "hours": 6
+    }
+  }
+}
