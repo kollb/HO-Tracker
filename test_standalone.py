@@ -1,7 +1,10 @@
 import pytest
+import os
+import re
 from playwright.sync_api import Page, expect
 
 BASE_URL = "http://localhost:8000/ho-tracker.html"
+PRIVATE_DIR = "testfiles"
 
 # --- FIXTURE: Clean State ---
 @pytest.fixture(autouse=True)
@@ -127,3 +130,83 @@ def test_gui_pdf_import_dialog_check(page: Page):
     # Prüfen ob der File Chooser aufgeht (Indiz für korrekte Verknüpfung)
     with page.expect_file_chooser(timeout=3000):
          page.locator("button:has(.mdi-file-pdf-box)").click()
+
+def test_pdf_import_standard_month(page: Page):
+    """
+    Testet den Import eines Standard-Monats (Juni 2025).
+    """
+    pdf_path = os.path.join(PRIVATE_DIR, "standard.pdf")
+    if not os.path.exists(pdf_path):
+        pytest.skip("Private PDF 'standard.pdf' nicht gefunden.")
+
+    page.goto(BASE_URL)
+    expect(page.locator("#app")).to_be_visible()
+
+    # 1. Datei hochladen (Input direkt setzen)
+    page.set_input_files('input[type="file"]', pdf_path)
+
+    # 2. Import starten
+    page.get_by_text("Import starten").click()
+    expect(page.locator(".v-snackbar__content")).to_contain_text("importiert")
+
+    # 3. Zum Juni 2025 springen (via JS Injection auf 'window.vm')
+    # WICHTIG: window.vm nutzen statt app
+    page.evaluate("window.vm.currentDate = new Date(2025, 5, 1); window.vm.loadMonthData();")
+    
+    # 4. Inhalt prüfen (2. Juni war Home Office)
+    row = page.locator("tr").filter(has_text="2. Mo").first
+    expect(row).to_contain_text("Home Office")
+    expect(row.locator("input").nth(1)).to_have_value("07:40")
+    expect(row.locator("input").nth(2)).to_have_value("16:30")
+
+def test_pdf_import_missing_booking(page: Page):
+    """
+    Testet den Umgang mit 'BUCHUNG FEHLT' (Feb 2026).
+    """
+    pdf_path = os.path.join(PRIVATE_DIR, "error.pdf")
+    if not os.path.exists(pdf_path):
+        pytest.skip("Private PDF 'error.pdf' nicht gefunden.")
+
+    page.goto(BASE_URL)
+    page.set_input_files('input[type="file"]', pdf_path)
+    page.get_by_text("Import starten").click()
+    expect(page.locator(".v-snackbar__content")).to_contain_text("importiert")
+
+    # Zum Februar 2026 springen
+    page.evaluate("window.vm.currentDate = new Date(2026, 1, 1); window.vm.loadMonthData();")
+
+    # 13.02.2026 prüfen
+    row = page.locator("tr").filter(has_text="13. Fr").first
+    comment_field = row.locator("input").last
+    
+    # Prüfen ob "Buchung fehlt" im Kommentar steht (Case insensitive Regex)
+    expect(comment_field).to_have_value(re.compile("Buchung fehlt", re.IGNORECASE))
+
+
+def test_pdf_import_overwrite_checkbox(page: Page):
+    """
+    Prüft, ob die Checkbox 'Überschreiben' im Dialog funktioniert.
+    """
+    pdf_path = os.path.join(PRIVATE_DIR, "standard.pdf")
+    if not os.path.exists(pdf_path):
+        pytest.skip("Private PDF fehlt.")
+
+    page.goto(BASE_URL)
+    
+    # Datei setzen öffnet Dialog
+    page.set_input_files('input[type="file"]', pdf_path)
+    
+    # Dialog prüfen
+    dialog = page.get_by_text("PDF Import (Lokal)")
+    expect(dialog).to_be_visible()
+    
+    # Checkbox "Existierende Einträge überschreiben" suchen und anklicken
+    # Wir suchen nach dem Label
+    checkbox = page.get_by_label("Existierende Einträge überschreiben")
+    checkbox.click()
+    
+    # Sicherstellen, dass sie aktiv ist (v-model check via JS Evaluation oder Screenshot)
+    # Wir klicken Import
+    page.get_by_text("Import starten").click()
+    
+    expect(page.locator(".v-snackbar__content")).to_contain_text("importiert")         

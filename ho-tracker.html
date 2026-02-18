@@ -435,7 +435,7 @@
         saveDayEntries(date, entriesArray) { 
              // Leere Einträge entfernen, wenn sie nicht der einzige sind
              if(entriesArray.length > 0) {
-                 const clean = entriesArray.filter(e => e.type && e.type !== '');
+                 const clean = entriesArray.filter(e => (e.type && e.type !== '') || (e.comment && e.comment.trim() !== ''));
                  if(clean.length === 0) delete this.data.entries[date];
                  else this.data.entries[date] = clean;
              } else {
@@ -991,7 +991,7 @@
 
     app.config.compilerOptions.delimiters = ['[[', ']]'];
     app.use(vuetify);
-    app.mount('#app');
+    window.vm = app.mount('#app');
   </script>
 </body>
 </html>
