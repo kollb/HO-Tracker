@@ -904,7 +904,7 @@
         },
         saveEntry(day) { this.saveSingleEntry(day.date); },
         saveSingleEntry(date, entry) {
-             const dayObj = this.items.find(i=>i.date === date);
+             let dayObj = this.items.find(i=>i.date === date); if(this.editingDay && this.editingDay.date === date) dayObj = this.editingDay;
              if(dayObj) {
                  // Clean up times
                  dayObj.entries.forEach(e => {
