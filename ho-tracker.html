@@ -31,7 +31,6 @@
     .day-row { transition: background-color 0.2s; border-bottom: 1px solid rgba(128,128,128, 0.1); }
     .day-row:hover { background-color: rgba(128,128,128, 0.1) !important; }
     .weekend, .holiday-row { background-color: rgba(128,128,128, 0.05); opacity: 0.8; }
-    .is-today { border-left: 4px solid #1976D2; background-color: rgba(25, 118, 210, 0.1) !important; }
     .short-day-row { background-color: rgba(255, 152, 0, 0.05); } 
     .off-day-row { background-color: rgba(0, 0, 0, 0.02); opacity: 0.6; text-decoration: line-through; text-decoration-color: #aaa; }
     .week-summary-row { background-color: rgba(128,128,128, 0.1); height: 36px !important; }
@@ -56,7 +55,7 @@
     .status-dr { background-color: rgba(33, 150, 243, 0.15); border-color: rgba(33, 150, 243, 0.5); }
     .status-planned { background-color: rgba(33, 150, 243, 0.08) !important; border: 1px dashed rgba(33, 150, 243, 0.6) !important; opacity: 0.9; }
 
-    .cal-date { font-weight: bold; font-size: 1rem; margin-bottom: 4px; }
+    .cal-date { font-weight: bold; font-size: 1rem; margin-bottom: 4px; display: flex; align-items: center; }
     .cal-holiday-name { font-size: 0.7rem; color: #ef5350; line-height: 1.1; margin-bottom: 4px; font-weight: 500;}
     .cal-short-info { font-size: 0.7rem; color: #f57c00; font-weight: bold; margin-bottom: 4px; }
     .cal-content { flex-grow: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; }
@@ -97,7 +96,7 @@
                   <v-checkbox v-model="importDialog.overwrite" label="Existierende Einträge überschreiben" density="compact" hide-details color="primary"></v-checkbox>
                   <div class="text-caption text-grey mt-2">
                       <v-icon size="small" class="mr-1">mdi-alert-circle-outline</v-icon>
-                      Optimiert für BBK Zeitnachweise (v2.8)
+                      Erkennt Monat, Jahr & den GLZ-Saldo automatisch.
                   </div>
               </v-card-text>
               <v-card-actions>
@@ -155,28 +154,42 @@
         <v-container fluid class="status-bar py-2 px-4 mb-3" v-if="viewMode !== 'year'">
             <div class="mx-auto" style="max-width: 1200px; width: 100%;">
                 <v-row align="center" no-gutters>
-                    <v-col cols="3" class="d-flex align-center">
+                    <v-col cols="12" md="3" class="d-flex justify-center justify-md-start align-center mb-2 mb-md-0 pl-md-4">
                         <v-btn icon variant="text" size="small" @click="changeMonth(-1)"><v-icon>mdi-chevron-left</v-icon></v-btn>
-                        <div class="font-weight-bold mx-1 text-center" style="line-height: 1.1;">
-                            <div class="text-uppercase" style="font-size: 0.9rem;">[[ currentMonthName ]]</div>
-                            <div class="text-caption opacity-60" style="font-size: 0.7rem;">[[ currentYear ]]</div>
+                        <div class="font-weight-bold mx-2 text-center" style="line-height: 1.1; min-width: 140px;">
+                            <div class="text-h6 font-weight-bold text-uppercase">[[ currentMonthName ]]</div><div class="text-caption opacity-60">[[ currentYear ]]</div>
                         </div>
                         <v-btn icon variant="text" size="small" @click="changeMonth(1)"><v-icon>mdi-chevron-right</v-icon></v-btn>
                     </v-col>
-                    <v-col cols="5" class="d-flex justify-center px-2">
-                        <div class="d-flex justify-space-around w-100" style="max-width: 380px;">
-                            <div class="text-center"><div class="stat-label"><v-icon size="x-small" class="mr-1">mdi-calendar-check</v-icon>Arbeitstage</div><div class="stat-value">[[ stats.workdays_month ]]</div></div>
+                    
+                    <v-col cols="12" md="2" class="d-flex justify-center align-center">
+                        <div class="d-flex" style="gap: 20px;">
+                            <div class="text-center"><div class="stat-label"><v-icon size="x-small" class="mr-1">mdi-calendar-check</v-icon>Tage</div><div class="stat-value">[[ stats.workdays_month ]]</div></div>
                             <div class="text-center"><div class="stat-label"><v-icon size="x-small" class="mr-1">mdi-office-building</v-icon>Bürostd.</div><div class="stat-value text-amber-darken-2">[[ formatNum(stats.total_office_made) ]] <span class="text-caption opacity-60">h</span></div></div>
                         </div>
                     </v-col>
-                    <v-col cols="4" class="pl-2">
+
+                    <v-col cols="6" md="3" class="d-flex justify-center align-center border-right">
+                        <div class="d-flex flex-column align-center justify-center h-100">
+                            <div class="text-caption text-uppercase font-weight-bold opacity-50 mb-0" style="font-size: 0.6rem !important;">Gleitzeit Saldo</div>
+                            <div class="d-flex align-center mb-1">
+                                 <span class="text-h6 font-weight-bold" :class="stats.current_glz >= 0 ? 'text-green-accent-3' : 'text-red-accent-2'" style="line-height: 1.1;">
+                                     <span v-if="stats.current_glz > 0">+</span>[[ formatNum(stats.current_glz) ]] <span class="text-body-2 ml-1">h</span>
+                                 </span>
+                            </div>
+                            <div class="d-flex align-center mt-0"><span class="text-caption opacity-60 font-weight-medium">Aktueller Monat</span></div>
+                        </div>
+                    </v-col>
+
+                    <v-col cols="6" md="4" class="pl-4">
                         <div class="d-flex flex-column align-end justify-center h-100">
-                            <div class="text-caption text-uppercase font-weight-bold opacity-50 mb-0" style="font-size: 0.6rem !important;">Budget</div>
+                            <div class="text-caption text-uppercase font-weight-bold opacity-50 mb-0" style="font-size: 0.6rem !important;">Home Office Budget</div>
                             <div class="d-flex align-center mb-1">
                                  <span class="text-subtitle-1 font-weight-bold" :class="budgetStateColor" style="line-height: 1.1;"><span v-if="budgetRemainingDays > 0">+</span>[[ formatOneDecimal(budgetRemainingDays) ]] Tage</span>
+                                 <span class="text-caption font-weight-medium opacity-60 ml-2" :class="budgetStateColor">([[ formatNum(budgetRemainingHours) ]] h)</span>
                             </div>
-                            <v-progress-linear :model-value="quotaPercentage" :color="getQuotaColor" height="6" rounded class="mb-1" style="width: 100%;" bg-color="grey-darken-3" bg-opacity="0.3"></v-progress-linear>
-                            <div class="d-flex align-center mt-0"><span class="text-caption opacity-80 font-weight-medium" style="font-size: 0.75rem;">[[ formatNum(stats.total_ho_made) ]] / [[ formatNum(stats.total_ho_allowed) ]] h</span></div>
+                            <v-progress-linear :model-value="quotaPercentage" :color="getQuotaColor" height="6" rounded class="mb-1" style="width: 100%; max-width: 250px;" bg-color="grey-darken-3" bg-opacity="0.3"></v-progress-linear>
+                            <div class="d-flex align-center mt-0"><span class="text-caption text-uppercase font-weight-bold opacity-40 mr-2">Genutzt:</span><span class="text-caption opacity-80 font-weight-medium">[[ formatNum(stats.total_ho_made) ]] / [[ formatNum(stats.total_ho_allowed) ]] h</span></div>
                         </div>
                     </v-col>
                 </v-row>
@@ -201,7 +214,17 @@
                 
                 <v-table density="compact" v-if="viewMode === 'list'" class="d-none d-md-block" style="width: 100%;">
                     <template v-slot:default>
-                        <thead><tr style="background-color: rgba(128,128,128,0.05);"><th class="text-left font-weight-bold">Datum</th><th class="text-left font-weight-bold" style="width:200px">Status</th><th class="text-left font-weight-bold">Start</th><th class="text-left font-weight-bold">Ende</th><th class="text-left font-weight-bold">Notiz</th><th style="width: 50px;"></th></tr></thead>
+                        <thead>
+                            <tr style="background-color: rgba(128,128,128,0.05);">
+                                <th class="text-left font-weight-bold">Datum</th>
+                                <th class="text-left font-weight-bold" style="width:180px">Status</th>
+                                <th class="text-left font-weight-bold" style="width:100px">Start</th>
+                                <th class="text-left font-weight-bold" style="width:100px">Ende</th>
+                                <th class="text-center font-weight-bold" style="width:140px">GLZ Saldo</th>
+                                <th class="text-left font-weight-bold">Notiz</th>
+                                <th style="width: 50px;"></th>
+                            </tr>
+                        </thead>
                         <tbody>
                             <template v-for="item in items" :key="item ? item.date : 'list-desk'">
                                 <template v-if="item && item.row_type === 'day' && (!settings.hide_weekends || !isWeekend(item))">
@@ -219,6 +242,14 @@
                                         </td>
                                         <td><v-text-field v-if="needsTimeInput(entry.type)" v-model="entry.start" placeholder="08:00" variant="underlined" density="compact" hide-details @change="saveEntry(item)"></v-text-field></td>
                                         <td><v-text-field v-if="needsTimeInput(entry.type)" v-model="entry.end" placeholder="16:00" variant="underlined" density="compact" hide-details @change="saveEntry(item)"></v-text-field></td>
+                                        
+                                        <td class="text-center" style="vertical-align: top; padding-top: 10px;">
+                                            <div v-if="index === 0" class="font-weight-bold" :class="item.glz_saldo >= 0 ? 'text-green' : 'text-red'">
+                                                <span v-if="item.glz_saldo > 0">+</span>[[ formatNum(item.glz_saldo) ]] h
+                                                <v-icon v-if="item.glz_override !== null" size="x-small" color="blue" class="ml-1" title="Offizieller GLZ Anker">mdi-anchor</v-icon>
+                                            </div>
+                                        </td>
+
                                         <td><v-text-field v-model="entry.comment" placeholder="..." variant="plain" density="compact" hide-details @change="saveEntry(item)"></v-text-field></td>
                                         <td style="vertical-align: top; padding-top: 5px;">
                                             <v-btn v-if="index === 0" icon size="small" variant="text" @click="openEditDialog(item)"><v-icon size="small">mdi-pencil</v-icon></v-btn>
@@ -226,7 +257,7 @@
                                         </td>
                                     </tr>
                                 </template>
-                                <tr v-else-if="item && item.row_type === 'summary'" class="week-summary-row"><td colspan="2" class="text-right pr-4">KW [[ item.iso_week ]] GESAMT:</td><td colspan="4"><span :class="getWeeklyColor(item.sum, item.target)">[[ formatNum(item.sum) ]] / [[ formatNum(item.target) ]] h</span></td></tr>
+                                <tr v-else-if="item && item.row_type === 'summary'" class="week-summary-row"><td colspan="2" class="text-right pr-4">KW [[ item.iso_week ]] GESAMT:</td><td colspan="5"><span :class="getWeeklyColor(item.sum, item.target)">[[ formatNum(item.sum) ]] / [[ formatNum(item.target) ]] h</span></td></tr>
                             </template>
                         </tbody>
                     </template>
@@ -237,7 +268,13 @@
                         <v-card v-if="item && item.row_type === 'day' && (!settings.hide_weekends || !isWeekend(item))" class="mb-2" elevation="1" :class="{'is-today': isToday(item.date)}" @click="openEditDialog(item)">
                             <div class="d-flex justify-space-between align-center pa-2 pb-0">
                                 <div><span class="font-weight-bold text-subtitle-1">[[ item.day_num ]]. [[ getGermanDay(item.weekday_index) ]]</span><span v-if="item.holiday_name" class="text-caption ml-2" :class="item.is_holiday ? 'text-red' : 'text-orange'">[[ item.holiday_name ]]</span></div>
-                                <v-chip v-if="item.total_net > 0" size="small" color="primary" variant="flat" class="font-weight-bold">[[ formatNum(item.total_net) ]] h</v-chip>
+                                <div>
+                                    <span class="text-caption font-weight-bold mr-2" :class="item.glz_saldo >= 0 ? 'text-green' : 'text-red'">
+                                        <v-icon v-if="item.glz_override !== null" size="x-small" color="blue" class="mr-1">mdi-anchor</v-icon>
+                                        GLZ: <span v-if="item.glz_saldo > 0">+</span>[[ formatNum(item.glz_saldo) ]]
+                                    </span>
+                                    <v-chip v-if="item.total_net > 0" size="small" color="primary" variant="flat" class="font-weight-bold">[[ formatNum(item.total_net) ]] h</v-chip>
+                                </div>
                             </div>
                             <div class="pa-2">
                                 <div v-for="(entry, i) in item.entries" :key="i" class="text-caption d-flex align-center mt-1">
@@ -265,7 +302,10 @@
                                           'status-home': item.main_type === 'home', 'status-office': item.main_type === 'office', 'status-planned': item.main_type === 'planned', 'status-sick': item.main_type === 'sick', 'status-vacation': item.main_type === 'vacation', 'status-dr': item.main_type === 'dr'}"
                                  @click="openEditDialog(item)">
                                 <div class="d-flex justify-space-between align-start">
-                                    <span class="cal-date" :class="{'opacity-50': item.is_off_day}">[[ item.day_num ]]</span>
+                                    <span class="cal-date" :class="{'opacity-50': item.is_off_day}">
+                                        [[ item.day_num ]]
+                                        <v-icon v-if="item.glz_override !== null" size="x-small" color="blue" class="ml-1" title="Offizieller GLZ Anker">mdi-anchor</v-icon>
+                                    </span>
                                 </div>
                                 <div v-if="item.holiday_name" class="cal-holiday-name" :style="{color: item.is_holiday ? '#ef5350' : '#f57c00'}">[[ item.holiday_name ]]</div>
                                 <div class="cal-content">
@@ -290,6 +330,15 @@
                                 <td class="text-center"><div class="d-flex align-center justify-center"><div style="width: 120px" class="mr-2"><v-progress-linear :model-value="stat.ho_hours_allowed ? (stat.ho_hours_made / stat.ho_hours_allowed)*100 : 0" color="blue" height="6" rounded></v-progress-linear></div><span class="text-caption">[[ formatNum(stat.ho_hours_made) ]] / [[ formatNum(stat.ho_hours_allowed) ]] h</span></div></td>
                             </tr>
                         </tbody>
+                        <tfoot class="bg-grey-darken-4 font-weight-bold" style="border-top: 2px solid rgba(255,255,255,0.2);">
+                            <tr>
+                                <td class="text-left py-3">GESAMT</td>
+                                <td class="text-center"><v-chip size="small" color="green" variant="elevated">[[ yearTotalHo ]] Tage</v-chip></td>
+                                <td class="text-center"><v-chip size="small" color="amber-darken-2" variant="elevated">[[ yearTotalOffice ]] Tage</v-chip></td>
+                                <td class="text-center"><v-chip size="small" color="purple" variant="elevated">[[ yearTotalVacation ]] Tage</v-chip></td>
+                                <td class="text-center">[[ formatNum(yearTotalHoHours) ]] / [[ formatNum(yearTotalAllowed) ]] h</td>
+                            </tr>
+                        </tfoot>
                     </template>
                 </v-table>
             </v-card>
@@ -332,6 +381,20 @@
                 </div>
 
                 <v-btn variant="text" size="small" color="primary" @click="addEntryToDay(editingDay)" class="mt-1"><v-icon start>mdi-plus</v-icon> Split hinzufügen</v-btn>
+
+                <v-divider class="my-3"></v-divider>
+                <div class="bg-surface-variant pa-3 rounded">
+                    <div class="text-caption font-weight-bold mb-1"><v-icon size="small" class="mr-1" color="blue">mdi-anchor</v-icon>GLZ-Korrektur (Override)</div>
+                    <div class="text-caption opacity-70 mb-2">Berechneter Stand an diesem Tag: <strong>[[ formatNum(editingDay.glz_saldo) ]] h</strong></div>
+                    <v-text-field 
+                        v-if="editingDay.entries && editingDay.entries.length > 0"
+                        v-model.number="editingDay.entries[0].glz_override" 
+                        label="Offiziellen Stand eintragen (überschreibt Berechnung)" 
+                        placeholder="z.B. 12.5" 
+                        variant="outlined" density="compact" hide-details type="number" step="0.01" 
+                        @change="saveEntry(editingDay)">
+                    </v-text-field>
+                </div>
             </v-card-text>
             <v-card-actions><v-spacer></v-spacer><v-btn color="primary" @click="dialogEditDay = false">Fertig</v-btn></v-card-actions>
         </v-card>
@@ -407,15 +470,12 @@
             if(!this.data.entries) this.data.entries = {};
             if(!this.data.customHolidays) this.data.customHolidays = {};
             
-            // MIGRATION: 1:1 Einträge zu Array (1:n)
             let migrated = false;
             for(const date in this.data.entries) {
-                // Array check
                 if(!Array.isArray(this.data.entries[date])) {
                     this.data.entries[date] = [this.data.entries[date]];
                     migrated = true;
                 }
-                // Legacy 'x' to 'planned' check
                 this.data.entries[date].forEach(e => {
                     if(e.type === 'x') { e.type = 'planned'; migrated = true; }
                 });
@@ -433,9 +493,8 @@
         saveSettings(s) { this.data.settings = s; this.persist(); },
         getEntries() { return this.data.entries || {}; },
         saveDayEntries(date, entriesArray) { 
-             // Leere Einträge entfernen, wenn sie nicht der einzige sind
              if(entriesArray.length > 0) {
-                 const clean = entriesArray.filter(e => (e.type && e.type !== '') || (e.comment && e.comment.trim() !== ''));
+                 const clean = entriesArray.filter(e => (e.type && e.type !== '') || (e.comment && e.comment.trim() !== '') || (e.glz_override !== undefined && e.glz_override !== null));
                  if(clean.length === 0) delete this.data.entries[date];
                  else this.data.entries[date] = clean;
              } else {
@@ -456,7 +515,7 @@
         let h=0, m=0;
         if (t.includes(':')) { const p = t.split(':'); h = parseInt(p[0]); m = parseInt(p[1]); } 
         else if (t.length === 4 && !isNaN(t)) { h = parseInt(t.substring(0, 2)); m = parseInt(t.substring(2, 4)); } 
-        else if (t.length === 3 && !isNaN(t)) { h = parseInt(t.substring(0, 1)); m = parseInt(t.substring(1, 3)); } // NEU: 3-stellig
+        else if (t.length === 3 && !isNaN(t)) { h = parseInt(t.substring(0, 1)); m = parseInt(t.substring(1, 3)); } 
         else if (t.length <= 2 && !isNaN(t)) { h = parseInt(t); m = 0; } else { return null; }
         if(isNaN(h)) h = 0; if(isNaN(m)) m = 0; 
         if(h > 23 || m > 59) return null;
@@ -481,14 +540,18 @@
     
     function calculateGrossTimeNeeded(targetNet) {
         if (targetNet <= 6.0) return targetNet;
-        else if (targetNet <= 8.25) return targetNet + 0.5; // Bis ca 9h Brutto sind es 30min Pause (ab 6h)
-        else return targetNet + 0.75; // Ab 9h Brutto sind es 45min Pause
+        else if (targetNet <= 8.25) return targetNet + 0.5; 
+        else return targetNet + 0.75; 
     }
     
-    function calculateTotalDailyNet(entries) {
+    function calculateTotalDailyNet(entries, infoTarget = 0) {
         let sum = 0.0;
         entries.forEach(e => {
-            if(['home','office','dr','planned'].includes(e.type) && e.start && e.end) {
+            if(e.type === 'planned') {
+                 if (e.start && e.end) sum += calculateNetHours(e.start, e.end);
+                 else sum += infoTarget;
+            }
+            else if(['home','office','dr'].includes(e.type) && e.start && e.end) {
                  sum += calculateNetHours(e.start, e.end);
             }
         });
@@ -517,7 +580,7 @@
       data() {
         return {
           viewMode: 'list', currentDate: new Date(), items: [], yearData: [],
-          stats: { total_ho_made: 0, total_ho_allowed: 1, total_office_made: 0, total_work_made: 0, avg_per_week: 0, workdays_month: 0 }, 
+          stats: { total_ho_made: 0, total_ho_allowed: 1, total_office_made: 0, total_work_made: 0, avg_per_week: 0, workdays_month: 0, current_glz: 0 }, 
           settings: { weekly_hours: 39, active_weekdays: [0,1,2,3,4], ho_quota_percent: 60, hide_weekends: false, default_start_time: '08:00', auto_convert_planned: true },
           dialogSettings: false, dialogEditDay: false, editingDay: null, 
           importDialog: { show: false, overwrite: false, file: null },
@@ -538,7 +601,13 @@
         calcDailyTarget() { const activeCount = this.settings.active_weekdays ? this.settings.active_weekdays.length : 5; if (activeCount === 0) return 0; return this.settings.weekly_hours / activeCount; },
         budgetRemainingHours() { return this.stats.total_ho_allowed - this.stats.total_ho_made; },
         budgetRemainingDays() { const daily = this.calcDailyTarget || 7.8; if(daily === 0) return 0; return this.budgetRemainingHours / daily; },
-        budgetStateColor() { return this.budgetRemainingHours >= 0 ? 'text-green-accent-3' : 'text-red-accent-2'; }
+        budgetStateColor() { return this.budgetRemainingHours >= 0 ? 'text-green-accent-3' : 'text-red-accent-2'; },
+        
+        yearTotalHo() { return this.yearData.reduce((sum, item) => sum + item.days_ho, 0); },
+        yearTotalOffice() { return this.yearData.reduce((sum, item) => sum + item.days_office, 0); },
+        yearTotalVacation() { return this.yearData.reduce((sum, item) => sum + item.days_vacation, 0); },
+        yearTotalHoHours() { return this.yearData.reduce((sum, item) => sum + item.ho_hours_made, 0); },
+        yearTotalAllowed() { return this.yearData.reduce((sum, item) => sum + item.ho_hours_allowed, 0); }
       },
       watch: { viewMode(newVal) { if(newVal === 'year') this.loadYearData(); else this.loadMonthData(); } },
       mounted() { 
@@ -549,11 +618,11 @@
       methods: {
         goHome() { window.location.reload(); },
         toggleTheme() { this.theme.global.name = this.theme.global.current.dark ? 'light' : 'dark'; },
-        formatNum(val) { return val ? val.toFixed(2).replace('.', ',') : '0,00'; },
-        formatOneDecimal(val) { return val ? val.toFixed(1).replace('.', ',') : '0,0'; },
+        formatNum(val) { return val || val === 0 ? val.toFixed(2).replace('.', ',') : '0,00'; },
+        formatOneDecimal(val) { return val || val === 0 ? val.toFixed(1).replace('.', ',') : '0,0'; },
         showMsg(text, color='success') { this.snackbar.text = text; this.snackbar.color = color; this.snackbar.show = true; },
         
-        // --- PDF IMPORT (CLIENT SIDE - FIX v2.8 Full Parity) ---
+        // --- PDF IMPORT (CLIENT SIDE - FULL PARITY) ---
         triggerPdfImport() { this.$refs.pdfInput.click(); },
         onPdfFileChange(event) { const file = event.target.files[0]; if (!file) return; this.importDialog.file = file; this.importDialog.show = true; event.target.value = ''; },
         async processPdfImport() {
@@ -565,20 +634,17 @@
                 const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
                 let cnt = 0;
                 
-                // Mappings
                 const germanMonths = {'Januar':1,'Februar':2,'März':3,'April':4,'Mai':5,'Juni':6,'Juli':7,'August':8,'September':9,'Oktober':10,'November':11,'Dezember':12};
-                // UPDATE v2.8: FULL PARITY with Python app.py
                 const TYPE_MAP = { 
-                    "Mobil": "home", "Telearb.": "home", 
+                    "Mobil": "home", "Telearb.": "home", "Telearb": "home", 
                     "anwesend": "office", 
                     "Krank": "sick", 
                     "Urlaub": "vacation", "Erholungs": "vacation", "Zusatz": "vacation", "Sonder": "vacation",
                     "Gleitzeit": "glz", "GLZ": "glz",
                     "Dienstreise": "dr", "Reise": "dr", "Fortbildung": "dr",
-                    "BUCHUNG FEHLT": "missing" // Special Handling
+                    "BUCHUNG FEHLT": "missing"
                 };
 
-                // Get Month/Year
                 const page1 = await pdf.getPage(1);
                 const txt1 = (await page1.getTextContent()).items.map(i=>i.str).join(' ');
                 const mMatch = txt1.match(/Monat:?\s*([a-zA-ZäöüÄÖÜ]+)\s*[-_]?\s*(\d{4})/);
@@ -587,89 +653,114 @@
                 
                 const dailyData = {};
                 
-                // Parse Pages (Strategy: Collect all text between two dates)
                 for(let i=1; i<=pdf.numPages; i++){
                     const page = await pdf.getPage(i);
                     const items = (await page.getTextContent()).items;
                     
-                    // Sort items spatially (top to bottom, left to right)
                     items.sort((a,b) => {
                         const yDiff = b.transform[5] - a.transform[5];
                         return Math.abs(yDiff) < 5 ? (a.transform[4] - b.transform[4]) : yDiff;
                     });
                     
-                    // Linearize text content
                     const fullText = items.map(item => item.str).join(" ");
-                    
-                    // Regex to find all dates like "01 DO", "02 FR"
                     const datePattern = /(\d{2})\s+(MO|DI|MI|DO|FR|SA|SO)/g;
                     let match;
                     let lastIndex = 0;
                     let lastDay = null;
 
-                    // Iterate matches
                     while ((match = datePattern.exec(fullText)) !== null) {
-                        // If we had a previous day, capture text from its start until this match
                         if (lastDay !== null) {
                             const segment = fullText.substring(lastIndex, match.index);
                             processDaySegment(lastDay, segment, dailyData, TYPE_MAP);
                         }
-                        
-                        // Start new day
                         lastDay = parseInt(match[1]);
                         lastIndex = match.index;
                     }
-                    
-                    // Process last segment
                     if (lastDay !== null) {
                          const segment = fullText.substring(lastIndex);
                          processDaySegment(lastDay, segment, dailyData, TYPE_MAP);
                     }
                 }
                 
-                // Helper to process a text segment for a specific day
                 function processDaySegment(day, text, dataStore, map) {
+                    let cleanText = text;
+                    const wIndex = cleanText.indexOf("Wochensumme");
+                    if (wIndex !== -1) cleanText = cleanText.substring(0, wIndex);
+                    const zIndex = cleanText.indexOf("Zeitkonto");
+                    if (zIndex !== -1) cleanText = cleanText.substring(0, zIndex);
+                    const kIndex = cleanText.indexOf("Kontingent");
+                    if (kIndex !== -1) cleanText = cleanText.substring(0, kIndex);
+                    
+                    if (cleanText.trim().startsWith("Tag ")) return;
+                    
                     if(!dataStore[day]) dataStore[day] = [];
                     
-                    // Check explicit missing
-                    if(text.includes("BUCHUNG FEHLT")) {
-                        dataStore[day].push({ type: '', start: '', end: '', comment: 'Buchung fehlt (PDF)' });
+                    let glz_saldo_val = null;
+                    const floats = [...cleanText.matchAll(/-?\d{1,3}[.,]\d{2}/g)].map(m => m[0]);
+                    if (floats.length > 0) {
+                        glz_saldo_val = parseFloat(floats[floats.length - 1].replace(',', '.'));
+                    }
+
+                    if(cleanText.includes("BUCHUNG FEHLT")) {
+                        dataStore[day].push({ type: '', start: '', end: '', comment: 'Buchung fehlt (PDF)', glz_override: glz_saldo_val });
                         return;
                     }
 
-                    // Find Type
                     let foundType = null;
                     for(const [k,v] of Object.entries(map)) { 
-                        if(text.includes(k) && v !== 'missing') foundType = v; 
+                        if(cleanText.includes(k) && v !== 'missing') foundType = v; 
                     }
                     
-                    // Find Times
-                    const times = [...text.matchAll(/(\d{2}:\d{2})/g)].map(m=>m[1]);
+                    const times = [...cleanText.matchAll(/(\d{2}:\d{2})/g)].map(m=>m[1]);
                     const validTimes = times.filter(t => t !== "00:00");
                     
+                    let entryAdded = false;
                     if (foundType) {
-                        const isDuplicate = dataStore[day].some(e => e.type === foundType);
+                        let isDuplicate = false;
+                        if (validTimes.length === 0) {
+                             for(let e of dataStore[day]) {
+                                  if (e.type === foundType && !e.start) {
+                                      isDuplicate = true;
+                                      if (glz_saldo_val !== null) e.glz_override = glz_saldo_val;
+                                  }
+                             }
+                        }
                         if (!isDuplicate || validTimes.length >= 2) {
                             const start = validTimes.length >= 2 ? validTimes[0] : "";
                             const end = validTimes.length >= 2 ? validTimes[1] : "";
-                            dataStore[day].push({ type: foundType, start, end });
+                            dataStore[day].push({ type: foundType, start, end, glz_override: glz_saldo_val });
+                            entryAdded = true;
                         }
-                    } else if (validTimes.length >= 2 && !text.includes("Wochensumme") && !text.includes("Soll")) {
-                        // Only fallback to Office if we actually have NON-ZERO times
-                        dataStore[day].push({ type: 'office', start: validTimes[0], end: validTimes[1] });
+                    } else if (validTimes.length >= 2 && !cleanText.includes("Soll")) {
+                        dataStore[day].push({ type: 'office', start: validTimes[0], end: validTimes[1], glz_override: glz_saldo_val });
+                        entryAdded = true;
+                    }
+                    
+                    if (!entryAdded && glz_saldo_val !== null) {
+                        if (dataStore[day].length > 0) {
+                            dataStore[day][dataStore[day].length - 1].glz_override = glz_saldo_val;
+                        } else {
+                            dataStore[day].push({ type: '', start: '', end: '', glz_override: glz_saldo_val });
+                        }
                     }
                 }
                 
-                // Save to Store with SMART FILTER
+                // Save to Store
+                const daysInMonth = new Date(year, month, 0).getDate();
                 for(const [d, blocks] of Object.entries(dailyData)) {
                      const dateIso = `${year}-${String(month).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
                      const dateObj = new Date(year, month-1, d);
                      const info = this.getDayInfo(dateObj);
                      
                      const cleanBlocks = blocks.filter(b => {
-                         if (info.holiday_name && b.type === 'vacation') return false; 
-                         if (!info.is_workday && b.type === 'vacation') return false;  
-                         return true;
+                         const hasTimes = b.start && b.end;
+                         const hasComment = !!b.comment;
+                         const hasOverride = b.glz_override !== null && b.glz_override !== undefined;
+                         const isFreeDay = !info.is_workday;
+                         
+                         // Keep if times, or it's a workday with missing stuff, or has comment, OR has override
+                         if (hasTimes || !isFreeDay || hasComment || hasOverride) return true;
+                         return false;
                      });
 
                      if(this.importDialog.overwrite) Store.saveDayEntries(dateIso, []);
@@ -709,7 +800,67 @@
             return { is_workday, target, holiday_name: hName, is_short_day: is_short, is_off_day: is_off };
         },
 
-        // FEATURE v2.7: Auto-Convert Expired Planned Days
+        getGlzCarryover(year, month) {
+            const targetDateObj = new Date(year, month - 1, 0); // last day of prev month
+            const targetDateStr = new Date(targetDateObj.getTime() - (targetDateObj.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
+            const allEntries = Store.getEntries();
+            const dates = Object.keys(allEntries).sort();
+            
+            let lastOverrideDate = null;
+            let runningGlz = 0.0;
+            
+            for(let i=dates.length-1; i>=0; i--) {
+                if (dates[i] <= targetDateStr) {
+                    const overrideEntry = allEntries[dates[i]].find(e => e.glz_override != null);
+                    if (overrideEntry) {
+                        lastOverrideDate = dates[i];
+                        runningGlz = overrideEntry.glz_override;
+                        break;
+                    }
+                }
+            }
+            
+            let startDate;
+            if (lastOverrideDate) {
+                startDate = new Date(lastOverrideDate);
+                startDate.setDate(startDate.getDate() + 1);
+            } else {
+                runningGlz = 0.0;
+                startDate = new Date(year, 0, 1);
+            }
+            
+            if (startDate > targetDateObj) return runningGlz;
+            
+            const todayStr = new Date().toISOString().split('T')[0];
+            let curr = new Date(startDate);
+            
+            while (curr <= targetDateObj) {
+                const currStr = new Date(curr.getTime() - (curr.getTimezoneOffset()*60000)).toISOString().split('T')[0];
+                const info = this.getDayInfo(curr);
+                const dayEntries = allEntries[currStr] || [];
+                
+                let dayNet = calculateTotalDailyNet(dayEntries, info.target);
+                let isPaidLeave = dayEntries.some(e => ['sick', 'vacation'].includes(e.type));
+                let isGlzDay = dayEntries.some(e => e.type === 'glz');
+                let isEmpty = dayEntries.length === 0 || dayEntries.every(e => !e.type);
+                let isFuture = currStr > todayStr;
+                
+                let dayDelta = 0.0;
+                if (info.is_workday) {
+                    if (isPaidLeave) dayDelta = dayNet;
+                    else if (isGlzDay) dayDelta = dayNet - info.target;
+                    else if (isEmpty && isFuture) dayDelta = 0.0;
+                    else dayDelta = dayNet - info.target;
+                } else {
+                    dayDelta = dayNet;
+                }
+                
+                runningGlz += dayDelta;
+                curr.setDate(curr.getDate() + 1);
+            }
+            return runningGlz;
+        },
+
         autoConvertExpiredEntries() {
             if(!this.settings.auto_convert_planned) return;
             const today = new Date().toISOString().split('T')[0];
@@ -720,8 +871,7 @@
                 if(date < today) {
                     entries.forEach(e => {
                         if(e.type === 'planned') {
-                            e.type = 'home'; // Convert to Home
-                            // If no time set, calculate defaults
+                            e.type = 'home';
                             if(!e.start) {
                                 const info = this.getDayInfo(new Date(date));
                                 if(info.target > 0) {
@@ -752,9 +902,12 @@
             const allEntries = Store.getEntries();
             const year = this.currentYear, month = this.currentMonth;
             const daysInMonth = new Date(year, month, 0).getDate();
+            const todayStr = new Date().toISOString().split('T')[0];
+            
             let total_ho=0, total_office=0, workdays=0, current_week_sum=0;
             let total_target_hours_month = 0.0;
             
+            let running_glz = this.getGlzCarryover(year, month);
             this.items = [];
 
             for(let d=1; d<=daysInMonth; d++) {
@@ -764,37 +917,32 @@
                 
                 if (info.is_workday) { workdays++; total_target_hours_month += info.target; }
 
-                // Clone entries to avoid mutations on store directly
                 const dayEntries = JSON.parse(JSON.stringify(allEntries[dateStr] || []));
-                
-                // Calculate Net
-                const dayNet = calculateTotalDailyNet(dayEntries);
+                const dayNet = calculateTotalDailyNet(dayEntries, info.target);
                 
                 let dayHoPart = 0, dayOffPart = 0;
+                let dayOverride = null;
+
                 dayEntries.forEach(e => {
                     let h = 0;
                     if(e.type === 'planned') {
-                        // FIX v2.7: Planned days count towards budget!
-                        // Use calculated net if times exist, otherwise target hours
                         if(e.start && e.end) h = calculateNetHours(e.start, e.end);
                         else h = info.target;
                     } 
                     else if(['home','office','dr'].includes(e.type)) h = calculateNetHours(e.start, e.end);
                     
                     e.net = parseFloat(h.toFixed(2)); 
+                    if(e.glz_override != null) dayOverride = e.glz_override;
                     
                     if(['home','planned'].includes(e.type)) dayHoPart += h;
                     else if(['office','dr'].includes(e.type)) dayOffPart += h;
                 });
                 
-                // Distribute Total Net based on ratio (or just add planned hours if dayNet is 0)
                 if(dayHoPart + dayOffPart > 0) {
-                    // Normal distribution if actual work logged
                     if(dayNet > 0) {
                         const ratio = dayNet / (dayHoPart + dayOffPart);
                         total_ho += dayHoPart * ratio; total_office += dayOffPart * ratio;
                     } else {
-                        // Only planned hours (future)
                         total_ho += dayHoPart;
                         total_office += dayOffPart;
                     }
@@ -806,16 +954,35 @@
                 if(dayEntries.length > 0) {
                      if(dayOffPart > dayHoPart) mainType = "office";
                      else if(dayHoPart > 0) mainType = "home";
-                     else if(dayEntries.some(e=>e.type==='planned')) mainType = "planned"; // Ensure planned shows color
+                     else if(dayEntries.some(e=>e.type==='planned')) mainType = "planned"; 
                      else mainType = dayEntries[0].type;
                 }
 
-                if(dayEntries.length === 0) dayEntries.push({type:'', start:'', end:'', comment:''});
+                // GLZ Logik pro Tag
+                let dayDelta = 0.0;
+                let isPaidLeave = dayEntries.some(e => ['sick', 'vacation'].includes(e.type));
+                let isGlzDay = dayEntries.some(e => e.type === 'glz');
+                let isEmpty = dayEntries.length === 0 || dayEntries.every(e => !e.type);
+                let isFuture = dateStr > todayStr;
+                
+                if (info.is_workday) {
+                    if (isPaidLeave) dayDelta = dayNet;
+                    else if (isGlzDay) dayDelta = dayNet - info.target;
+                    else if (isEmpty && isFuture) dayDelta = 0.0;
+                    else dayDelta = dayNet - info.target;
+                } else {
+                    dayDelta = dayNet;
+                }
+
+                running_glz += dayDelta;
+                if (dayOverride !== null) running_glz = dayOverride;
+
+                if(dayEntries.length === 0) dayEntries.push({type:'', start:'', end:'', comment:'', glz_override: dayOverride});
 
                 this.items.push({ 
                     row_type: 'day', date: dateStr, day_num: d, weekday_index: (dateObj.getDay()+6)%7, iso_week: getISOWeek(dateObj), 
                     is_holiday: (info.holiday_name && !info.is_workday), holiday_name: info.holiday_name, is_short_day: info.is_short_day, is_off_day: info.is_off_day,
-                    daily_target: info.target, entries: dayEntries, total_net: dayNet, main_type: mainType
+                    daily_target: info.target, entries: dayEntries, total_net: dayNet, main_type: mainType, glz_saldo: running_glz, glz_override: dayOverride
                 });
                 
                 if((dateObj.getDay()+6)%7 === 6 || d === daysInMonth) {
@@ -825,7 +992,7 @@
             }
             
             const max_ho = total_target_hours_month * (this.settings.ho_quota_percent / 100);
-            this.stats = { total_ho_made: total_ho, total_ho_allowed: max_ho, total_office_made: total_office, total_work_made: total_ho+total_office, workdays_month: workdays };
+            this.stats = { total_ho_made: total_ho, total_ho_allowed: max_ho, total_office_made: total_office, total_work_made: total_ho+total_office, workdays_month: workdays, current_glz: running_glz };
         },
         
         loadYearData() {
@@ -846,13 +1013,13 @@
                     
                     const entries = allEntries[dateStr] || [];
                     if(entries.length > 0) {
-                        const dayNet = calculateTotalDailyNet(entries);
+                        const dayNet = calculateTotalDailyNet(entries, info.target);
                         
                         let hasHo=false, hasOff=false, hasVac=false;
                         let rawHo=0, rawOff=0;
 
                         entries.forEach(e => {
-                            if(['home','planned'].includes(e.type)) { hasHo=true; rawHo += calculateNetHours(e.start, e.end); }
+                            if(['home','planned'].includes(e.type)) { hasHo=true; rawHo += (e.start && e.end) ? calculateNetHours(e.start, e.end) : info.target; }
                             if(['office','dr'].includes(e.type)) { hasOff=true; rawOff += calculateNetHours(e.start, e.end); }
                             if(e.type === 'vacation') hasVac=true;
                         });
@@ -862,6 +1029,8 @@
                         if(rawHo+rawOff > 0) {
                             const ratio = dayNet / (rawHo+rawOff);
                             ho_h += rawHo * ratio; off_h += rawOff * ratio;
+                        } else if (rawHo > 0) {
+                            ho_h += rawHo;
                         }
                     }
                 }
@@ -873,20 +1042,20 @@
         openEditDialog(day) { this.editingDay = day; this.dialogEditDay = true; },
         quickSetStatus(day, type) { 
              if(type==='') { Store.saveDayEntries(day.date, []); this.loadMonthData(); return; }
-             if(day.entries.length === 0 || day.entries[0].type === '') day.entries = [{type, start:'', end:'', comment:''}];
+             if(day.entries.length === 0 || day.entries[0].type === '') day.entries = [{type, start:'', end:'', comment:'', glz_override: day.glz_override}];
              else day.entries[0].type = type;
              this.onEntryChange(day, day.entries[0]);
         },
         setPrimaryType(day, type) { 
-            if(day.entries.length === 0 || day.entries[0].type === '') day.entries = [{type, start:'', end:'', comment:''}];
+            if(day.entries.length === 0 || day.entries[0].type === '') day.entries = [{type, start:'', end:'', comment:'', glz_override: day.glz_override}];
             day.entries[0].type = type; 
             this.onEntryChange(day, day.entries[0]); 
         },
         addEntryToDay(day) { day.entries.push({type:'home', start:'', end:'', comment:''}); },
         deleteEntry(day, idx) { 
             day.entries.splice(idx, 1); 
-            if(day.entries.length===0) day.entries.push({type:'', start:'', end:'', comment:''});
-            this.saveSingleEntry(day.date, null); // Trigger save via reload
+            if(day.entries.length===0) day.entries.push({type:'', start:'', end:'', comment:'', glz_override: day.glz_override});
+            this.saveSingleEntry(day.date); 
         },
         onEntryChange(day, entry) {
             if(['home', 'office', 'dr'].includes(entry.type) && !entry.start) {
@@ -903,10 +1072,9 @@
              this.saveSingleEntry(day.date);
         },
         saveEntry(day) { this.saveSingleEntry(day.date); },
-        saveSingleEntry(date, entry) {
+        saveSingleEntry(date) {
              let dayObj = this.items.find(i=>i.date === date); if(this.editingDay && this.editingDay.date === date) dayObj = this.editingDay;
              if(dayObj) {
-                 // Clean up times
                  dayObj.entries.forEach(e => {
                      if(e.start) e.start = normalizeTimeInput(e.start) || e.start;
                      if(e.end) e.end = normalizeTimeInput(e.end) || e.end;
@@ -927,7 +1095,6 @@
                 if(this.seriesDialog.weekdays.includes(dayIdx)) {
                     const dStr = new Date(curr.getTime() - (curr.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
                     const info = this.getDayInfo(curr);
-                    // Skip Holidays
                     if(info.holiday_name && !info.is_workday) { curr.setDate(curr.getDate()+1); continue; }
                     
                     const existing = Store.getEntries()[dStr] || [];
@@ -947,7 +1114,6 @@
         getGermanMonthName(m) { if(!m) return ""; const d = new Date(); d.setMonth(m-1); return d.toLocaleString('de-DE', { month: 'long' }); },
         isWeekend(day) { return day.weekday_index >= 5; },
         isToday(dateStr) { return dateStr === new Date().toISOString().split('T')[0]; },
-        // FEATURE v2.7: 'planned' allows Time Input now
         needsTimeInput(type) { return ['home', 'office', 'dr', 'planned', '', null].includes(type); },
         getStatusIcon(type) { const map = { 'home': 'mdi-home', 'office': 'mdi-office-building', 'planned': 'mdi-calendar-clock', 'sick': 'mdi-emoticon-sick', 'vacation': 'mdi-beach', 'dr': 'mdi-car' }; return map[type] || ''; },
         getStatusIconColor(type) { const map = { 'home': 'green', 'office': 'amber-darken-4', 'planned': 'blue', 'sick': 'red', 'vacation': 'purple', 'dr': 'blue' }; return map[type] || 'grey'; },
@@ -964,7 +1130,6 @@
             this.newCustomHoliday = {date:'', name:'', hours:0}; 
         },
         deleteCustomHoliday(dateKey) { delete this.customHolidays[dateKey]; },
-        // FIX v2.9: Button füllt nur Eingabefelder aus, statt direkt zu speichern
         addWaeldchestag() { 
             const y = this.currentYear; 
             const a=y%19, b=Math.floor(y/100), c=y%100, dd=Math.floor(b/4), e=b%4, f=Math.floor((b+8)/25), g=Math.floor((b-f+1)/3), h=(19*a+b-dd-g+15)%30, i=Math.floor(c/4), k=c%4, l=(32+2*e+2*i-h-k)%7, m_easter=Math.floor((a+11*h+22*l)/451); 
@@ -973,7 +1138,6 @@
             const waeldchestag = new Date(easterDate); waeldchestag.setDate(easterDate.getDate() + 51); 
             const dateStr = new Date(waeldchestag.getTime() - (waeldchestag.getTimezoneOffset() * 60000)).toISOString().split('T')[0]; 
             
-            // Felder vorbefüllen, User kann ändern
             this.newCustomHoliday.date = dateStr; 
             this.newCustomHoliday.name = 'Wäldchestag'; 
             this.newCustomHoliday.hours = 6.0; 

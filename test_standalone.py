@@ -34,10 +34,10 @@ def test_js_calculate_net_hours(page: Page):
         result = page.evaluate(f"calculateNetHours('{start}', '{end}')")
         assert abs(result - expected) < 0.01
 
-# --- GUI TESTS ---
 
+# --- GUI TESTS ---
 def test_gui_create_standard_entry(page: Page):
-    """Workflow: Standardeintrag erstellen."""
+    """Workflow: Standardeintrag erstellen und GLZ Override prüfen."""
     page.locator("button:has(.mdi-pencil)").first.click()
     
     # Overlay & Typ "Büro" wählen
@@ -48,9 +48,22 @@ def test_gui_create_standard_entry(page: Page):
     # Auto-Fill Check
     expect(page.get_by_label("Start").last).to_have_value("08:00")
     
+    # NEU: GLZ Override Feld prüfen und füllen
+    override_input = page.get_by_label("Offiziellen Stand eintragen", exact=False)
+    expect(override_input).to_be_visible()
+    override_input.fill("12.5")
+    override_input.press("Tab") # Change Event triggern
+    
     page.get_by_text("Fertig").click()
+    
     # Check auf Zahl (Einheit h kann getrennt sein)
     expect(page.locator("table")).to_contain_text("7,80")
+    
+    # Check auf den neuen GLZ Saldo (+12,50 h) aus dem Override
+    expect(page.locator("table")).to_contain_text("+12,50 h")
+    
+    # Check auf das blaue Anker-Icon (Synchronisiert)
+    expect(page.locator("table").locator(".mdi-anchor").first).to_be_visible()
 
 def test_gui_split_entry(page: Page):
     """Workflow: Split Buchung."""
@@ -58,8 +71,8 @@ def test_gui_split_entry(page: Page):
     # 1. Dialog öffnen
     page.locator("button:has(.mdi-pencil)").first.click()
     
-    # 2. Ersten Eintrag ändern
-    page.get_by_text("Home Office").click()
+    # 2. Ersten Eintrag ändern (GEFIXT: Eindeutig den Button ansprechen)
+    page.locator(".v-overlay__content").get_by_role("button", name="Home Office").click()
     
     # Ende ändern (Klick auf Titel nimmt Fokus sicher weg)
     page.locator(".v-card-title").click()
@@ -75,19 +88,16 @@ def test_gui_split_entry(page: Page):
     
     # 4. Status wählen
     split_box.locator(".v-select").click()
-    page.locator(".v-overlay__content").get_by_text("Büro").last.click()
+    page.locator(".v-overlay__content").get_by_text("Büro", exact=True).last.click()
     
-    # 5. Zeiten füllen
-    # Index 0 = Select, 1 = Start, 2 = Ende
+    # 5. Zeiten füllen (Index 0 = Select, 1 = Start, 2 = Ende)
     inputs = split_box.locator("input")
     
-    # Start (13:00)
     start_in = inputs.nth(1)
     start_in.click(force=True)
     start_in.fill("13:00")
     start_in.press("Tab")
     
-    # Ende (17:00)
     end_in = inputs.nth(2)
     end_in.click(force=True)
     end_in.fill("17:00")
@@ -117,8 +127,15 @@ def test_gui_settings_custom_holiday(page: Page):
     expect(page.locator("table")).to_contain_text("TestFeiertag")
 
 def test_gui_switch_views(page: Page):
+    # NEU: Prüfen ob das GLZ Widget und die Tabellenspalte existieren
+    expect(page.get_by_text("Gleitzeit Saldo")).to_be_visible()
+    expect(page.locator("th").filter(has_text="GLZ Saldo")).to_be_visible()
+    
+    # Jahresansicht
     page.locator("button[value='year']").click()
     expect(page.locator("th").filter(has_text="Urlaub")).to_be_visible()
+    
+    # Listenansicht
     page.locator("button[value='list']").click()
     expect(page.locator("table")).to_be_visible()
 
@@ -150,7 +167,6 @@ def test_pdf_import_standard_month(page: Page):
     expect(page.locator(".v-snackbar__content")).to_contain_text("importiert")
 
     # 3. Zum Juni 2025 springen (via JS Injection auf 'window.vm')
-    # WICHTIG: window.vm nutzen statt app
     page.evaluate("window.vm.currentDate = new Date(2025, 5, 1); window.vm.loadMonthData();")
     
     # 4. Inhalt prüfen (2. Juni war Home Office)
@@ -201,12 +217,9 @@ def test_pdf_import_overwrite_checkbox(page: Page):
     expect(dialog).to_be_visible()
     
     # Checkbox "Existierende Einträge überschreiben" suchen und anklicken
-    # Wir suchen nach dem Label
     checkbox = page.get_by_label("Existierende Einträge überschreiben")
     checkbox.click()
     
-    # Sicherstellen, dass sie aktiv ist (v-model check via JS Evaluation oder Screenshot)
-    # Wir klicken Import
+    # Import
     page.get_by_text("Import starten").click()
-    
-    expect(page.locator(".v-snackbar__content")).to_contain_text("importiert")         
+    expect(page.locator(".v-snackbar__content")).to_contain_text("importiert")
