@@ -23,203 +23,163 @@ def test_js_normalize_time_input(page: Page):
         assert result == expected if expected else result is None
 
 def test_js_calculate_net_hours(page: Page):
-    # Angepasst an deine JS Logik (sofortiger Abzug)
     test_cases = [
         ("08:00", "12:00", 4.0),
         ("08:00", "14:00", 6.0),
-        ("08:00", "14:05", 5.58),
-        ("08:00", "17:00", 8.5),
+        ("08:00", "14:05", 6.0),   
+        ("08:00", "14:30", 6.0),   
+        ("08:00", "15:00", 6.5),   
+        ("08:00", "17:00", 8.5),   
+        ("08:00", "17:35", 9.0),   
+        ("08:00", "18:00", 9.25),  
     ]
     for start, end, expected in test_cases:
         result = page.evaluate(f"calculateNetHours('{start}', '{end}')")
         assert abs(result - expected) < 0.01
 
-
 # --- GUI TESTS ---
 def test_gui_create_standard_entry(page: Page):
-    """Workflow: Standardeintrag erstellen und GLZ Override prüfen."""
-    page.locator("button:has(.mdi-pencil)").first.click()
+    row = page.locator(".day-row").first
+    row.hover()
+    row.locator(".mdi-pencil").click()
     
-    # Overlay & Typ "Büro" wählen
-    overlay = page.locator(".v-overlay__content").filter(has=page.locator(".v-card")).filter(has_text="Home Office").first
+    overlay = page.locator(".v-overlay__content").filter(has_text="Home Office").first
     expect(overlay).to_be_visible()
     overlay.get_by_text("Büro", exact=True).click()
     
-    # Auto-Fill Check
-    expect(page.get_by_label("Start").last).to_have_value("08:00")
+    expect(page.get_by_label("Startzeit").first).to_have_value("08:00")
     
-    # NEU: GLZ Override Feld prüfen und füllen
-    override_input = page.get_by_label("Offiziellen Stand eintragen", exact=False)
+    override_input = page.get_by_label(re.compile("Offiziellen PDF-Saldo", re.IGNORECASE))
     expect(override_input).to_be_visible()
     override_input.fill("12.5")
-    override_input.press("Tab") # Change Event triggern
+    override_input.press("Tab")
     
-    page.get_by_text("Fertig").click()
+    page.get_by_text("Schließen").click()
     
-    # Check auf Zahl (Einheit h kann getrennt sein)
-    expect(page.locator("table")).to_contain_text("7,80")
-    
-    # Check auf den neuen GLZ Saldo (+12,50 h) aus dem Override
-    expect(page.locator("table")).to_contain_text("+12,50 h")
-    
-    # Check auf das blaue Anker-Icon (Synchronisiert)
+    expect(page.locator("table").first).to_contain_text("7,80")
+    expect(page.locator("table").first).to_contain_text("+12,50")
     expect(page.locator("table").locator(".mdi-anchor").first).to_be_visible()
 
 def test_gui_split_entry(page: Page):
-    """Workflow: Split Buchung."""
+    row = page.locator(".day-row").first
+    row.hover()
+    row.locator(".mdi-pencil").click()
     
-    # 1. Dialog öffnen
-    page.locator("button:has(.mdi-pencil)").first.click()
+    dialog = page.locator(".v-overlay__content").filter(has_text="Schließen").first
+    dialog.get_by_text("Home Office", exact=True).first.click()
     
-    # 2. Ersten Eintrag ändern (GEFIXT: Eindeutig den Button ansprechen)
-    page.locator(".v-overlay__content").get_by_role("button", name="Home Office").click()
-    
-    # Ende ändern (Klick auf Titel nimmt Fokus sicher weg)
-    page.locator(".v-card-title").click()
-    end_input = page.get_by_label("Ende").first
+    end_input = page.get_by_label("Endzeit").first
     end_input.click()
     end_input.fill("12:00")
-    end_input.press("Tab") # Change triggern
+    end_input.press("Tab")
     
-    # 3. Split hinzufügen
     page.get_by_text("Split hinzufügen").click()
-    split_box = page.locator(".split-entry-box")
-    expect(split_box).to_be_visible()
     
-    # 4. Status wählen
-    split_box.locator(".v-select").click()
-    page.locator(".v-overlay__content").get_by_text("Büro", exact=True).last.click()
+    start_inputs = dialog.get_by_label("Startzeit")
+    end_inputs = dialog.get_by_label("Endzeit")
     
-    # 5. Zeiten füllen (Index 0 = Select, 1 = Start, 2 = Ende)
-    inputs = split_box.locator("input")
+    start_inputs.nth(1).fill("13:00")
+    start_inputs.nth(1).press("Tab")
+    end_inputs.nth(1).fill("17:00")
+    end_inputs.nth(1).press("Tab")
     
-    start_in = inputs.nth(1)
-    start_in.click(force=True)
-    start_in.fill("13:00")
-    start_in.press("Tab")
-    
-    end_in = inputs.nth(2)
-    end_in.click(force=True)
-    end_in.fill("17:00")
-    end_in.press("Tab")
-    
-    # Fokus wegnehmen zum Speichern
-    page.locator(".v-card-title").click()
-    
-    # 6. Dialog schließen
-    page.get_by_text("Fertig").click()
-    
-    # Prüfung: 4h + 4h = 8.00 h
-    expect(page.locator("table")).to_contain_text("8,00")
+    page.get_by_text("Schließen").click()
+    expect(page.locator("table").first).to_contain_text("8,00")
 
 def test_gui_settings_custom_holiday(page: Page):
-    page.locator("button:has(.mdi-cog)").click()
+    page.locator(".v-list-item").filter(has_text="Einstellungen").click()
     today = page.evaluate("new Date().toISOString().split('T')[0]")
     
-    dialog = page.locator(".v-card").filter(has_text="Einstellungen")
-    dialog.locator("input[type='date']").last.fill(today)
+    dialog = page.locator(".v-overlay__content").filter(has_text="Einstellungen")
+    dialog.locator("input[type='date']").first.fill(today)
     dialog.get_by_label("Bez.").fill("TestFeiertag")
     dialog.get_by_label("Std.").fill("0")
     
-    dialog.locator("button.v-btn--icon").last.click()
-    page.get_by_text("Schließen").click()
+    dialog.locator(".mdi-content-save").locator("..").click()
+    expect(dialog.get_by_text("TestFeiertag").first).to_be_visible()
     
-    expect(page.locator("table")).to_contain_text("TestFeiertag")
+    dialog.locator("div.d-flex.align-center").filter(has_text="TestFeiertag").locator(".mdi-pencil").click()
+    dialog.get_by_label("Bez.").fill("Geändert")
+    dialog.locator(".mdi-content-save").locator("..").click()
+    
+    expect(dialog.get_by_text("Geändert").first).to_be_visible()
+    
+    page.get_by_text("Speichern & Schließen").click()
+    expect(page.locator("table").first).to_contain_text("Geändert")
 
 def test_gui_switch_views(page: Page):
-    # NEU: Prüfen ob das GLZ Widget und die Tabellenspalte existieren
-    expect(page.get_by_text("Gleitzeit Saldo")).to_be_visible()
-    expect(page.locator("th").filter(has_text="GLZ Saldo")).to_be_visible()
+    expect(page.locator(".status-bar").first).to_be_visible()
     
-    # Jahresansicht
-    page.locator("button[value='year']").click()
+    page.locator(".v-list-item").filter(has_text="Jahresübersicht").click()
     expect(page.locator("th").filter(has_text="Urlaub")).to_be_visible()
+    expect(page.locator("canvas#donutChart")).to_be_attached()
     
-    # Listenansicht
-    page.locator("button[value='list']").click()
-    expect(page.locator("table")).to_be_visible()
+    page.locator(".v-list-item").filter(has_text="Listenansicht").click()
+    expect(page.locator("table").first).to_be_visible()
 
 def test_gui_pdf_import_dialog_check(page: Page):
-    # Check ob Button & Input existieren
-    expect(page.locator(".mdi-file-pdf-box")).to_be_visible()
-    expect(page.locator("input[type='file']")).to_be_attached()
+    pdf_path = os.path.join(PRIVATE_DIR, "standard.pdf")
+    if not os.path.exists(pdf_path):
+        pytest.skip("Private PDF fehlt.")
+
+    page.goto(BASE_URL)
+    # FIX: Das Hidden-Input Element direkt ansprechen, um die Datei zu setzen
+    page.locator('input[type="file"][accept=".pdf"]').set_input_files(pdf_path)
     
-    # Prüfen ob der File Chooser aufgeht (Indiz für korrekte Verknüpfung)
-    with page.expect_file_chooser(timeout=3000):
-         page.locator("button:has(.mdi-file-pdf-box)").click()
+    # Erst danach taucht der Dialog auf!
+    expect(page.get_by_text("PDF Import (Lokal)")).to_be_visible()
 
 def test_pdf_import_standard_month(page: Page):
-    """
-    Testet den Import eines Standard-Monats (Juni 2025).
-    """
     pdf_path = os.path.join(PRIVATE_DIR, "standard.pdf")
     if not os.path.exists(pdf_path):
         pytest.skip("Private PDF 'standard.pdf' nicht gefunden.")
 
     page.goto(BASE_URL)
-    expect(page.locator("#app")).to_be_visible()
+    page.locator('input[type="file"][accept=".pdf"]').set_input_files(pdf_path)
 
-    # 1. Datei hochladen (Input direkt setzen)
-    page.set_input_files('input[type="file"]', pdf_path)
-
-    # 2. Import starten
     page.get_by_text("Import starten").click()
     expect(page.locator(".v-snackbar__content")).to_contain_text("importiert")
 
-    # 3. Zum Juni 2025 springen (via JS Injection auf 'window.vm')
     page.evaluate("window.vm.currentDate = new Date(2025, 5, 1); window.vm.loadMonthData();")
     
-    # 4. Inhalt prüfen (2. Juni war Home Office)
     row = page.locator("tr").filter(has_text="2. Mo").first
     expect(row).to_contain_text("Home Office")
     expect(row.locator("input").nth(1)).to_have_value("07:40")
     expect(row.locator("input").nth(2)).to_have_value("16:30")
 
 def test_pdf_import_missing_booking(page: Page):
-    """
-    Testet den Umgang mit 'BUCHUNG FEHLT' (Feb 2026).
-    """
     pdf_path = os.path.join(PRIVATE_DIR, "error.pdf")
     if not os.path.exists(pdf_path):
         pytest.skip("Private PDF 'error.pdf' nicht gefunden.")
 
     page.goto(BASE_URL)
-    page.set_input_files('input[type="file"]', pdf_path)
+    page.locator('input[type="file"][accept=".pdf"]').set_input_files(pdf_path)
+    
     page.get_by_text("Import starten").click()
     expect(page.locator(".v-snackbar__content")).to_contain_text("importiert")
 
-    # Zum Februar 2026 springen
     page.evaluate("window.vm.currentDate = new Date(2026, 1, 1); window.vm.loadMonthData();")
 
-    # 13.02.2026 prüfen
     row = page.locator("tr").filter(has_text="13. Fr").first
     comment_field = row.locator("input").last
-    
-    # Prüfen ob "Buchung fehlt" im Kommentar steht (Case insensitive Regex)
     expect(comment_field).to_have_value(re.compile("Buchung fehlt", re.IGNORECASE))
 
-
 def test_pdf_import_overwrite_checkbox(page: Page):
-    """
-    Prüft, ob die Checkbox 'Überschreiben' im Dialog funktioniert.
-    """
     pdf_path = os.path.join(PRIVATE_DIR, "standard.pdf")
     if not os.path.exists(pdf_path):
         pytest.skip("Private PDF fehlt.")
 
     page.goto(BASE_URL)
     
-    # Datei setzen öffnet Dialog
-    page.set_input_files('input[type="file"]', pdf_path)
+    # FIX: Erst PDF hochladen
+    page.locator('input[type="file"][accept=".pdf"]').set_input_files(pdf_path)
     
     # Dialog prüfen
     dialog = page.get_by_text("PDF Import (Lokal)")
     expect(dialog).to_be_visible()
     
-    # Checkbox "Existierende Einträge überschreiben" suchen und anklicken
     checkbox = page.get_by_label("Existierende Einträge überschreiben")
     checkbox.click()
     
-    # Import
     page.get_by_text("Import starten").click()
     expect(page.locator(".v-snackbar__content")).to_contain_text("importiert")
