@@ -73,6 +73,7 @@
     .day-row { transition: background-color 0.2s; border-bottom: 1px solid rgba(128,128,128, 0.05); }
     .day-row:hover { background-color: rgba(128,128,128, 0.08) !important; }
     
+    /* HEUTIGER TAG HIGHLIGHT (Dezent & Elegant) */
     .day-row.is-today td { background-color: rgba(33, 150, 243, 0.08) !important; }
     .day-row.is-today td:first-child { box-shadow: inset 3px 0 0 0 #2196F3; }
     .cal-cell.is-today { border: 2px solid #2196F3; background-color: rgba(33, 150, 243, 0.05); }
@@ -970,6 +971,7 @@
             
             if (startDate > targetDateObj) return runningGlz;
             
+            const todayStr = new Date().toISOString().split('T')[0];
             let curr = new Date(startDate);
             
             while (curr <= targetDateObj) {
@@ -981,12 +983,13 @@
                 let isPaidLeave = dayEntries.some(e => ['sick', 'vacation'].includes(e.type));
                 let isGlzDay = dayEntries.some(e => e.type === 'glz');
                 let isEmpty = dayEntries.length === 0 || dayEntries.every(e => !e.type);
+                let isFuture = currStr > todayStr;
                 
                 let dayDelta = 0.0;
                 if (info.is_workday) {
                     if (isPaidLeave) dayDelta = dayNet;
                     else if (isGlzDay) dayDelta = dayNet - info.target;
-                    else if (isEmpty) dayDelta = 0.0;
+                    else if (isEmpty && isFuture) dayDelta = 0.0;
                     else dayDelta = dayNet - info.target;
                 } else {
                     dayDelta = dayNet;
@@ -1039,6 +1042,7 @@
             const allEntries = Store.getEntries();
             const year = this.currentYear, month = this.currentMonth;
             const daysInMonth = new Date(year, month, 0).getDate();
+            const todayStr = new Date().toISOString().split('T')[0];
             
             let total_ho=0, total_office=0, workdays=0, current_week_sum=0;
             let total_target_hours_month = 0.0;
@@ -1098,11 +1102,12 @@
                 let isPaidLeave = dayEntries.some(e => ['sick', 'vacation'].includes(e.type));
                 let isGlzDay = dayEntries.some(e => e.type === 'glz');
                 let isEmpty = dayEntries.length === 0 || dayEntries.every(e => !e.type);
+                let isFuture = dateStr > todayStr;
                 
                 if (info.is_workday) {
                     if (isPaidLeave) dayDelta = dayNet;
                     else if (isGlzDay) dayDelta = dayNet - info.target;
-                    else if (isEmpty) dayDelta = 0.0; 
+                    else if (isEmpty && isFuture) dayDelta = 0.0;
                     else dayDelta = dayNet - info.target;
                 } else {
                     dayDelta = dayNet;
@@ -1155,8 +1160,6 @@
                         entries.forEach(e => {
                             if(['home','planned'].includes(e.type)) { hasHo=true; rawHo += (e.start && e.end) ? calculateNetHours(e.start, e.end) : info.target; }
                             if(['office','dr'].includes(e.type)) { hasOff=true; rawOff += calculateNetHours(e.start, e.end); }
-                            
-                            // FIX: Urlaub wird nur gezählt, wenn es ein regulärer Arbeitstag gewesen wäre!
                             if(e.type === 'vacation') {
                                 if(info.is_workday) hasVac = true;
                             }
@@ -1180,6 +1183,7 @@
             }
         },
 
+        // PORTIERT: Interaktive Chart.js Tooltips und Hover-Effekte
         renderCharts() {
             if (!window.Chart) return;
             
@@ -1200,13 +1204,27 @@
                     datasets: [{
                         data: [this.yearTotalHo, this.yearTotalOffice, this.yearTotalVacation],
                         backgroundColor: ['#4CAF50', '#FFC107', '#9C27B0'],
-                        borderWidth: 0
+                        borderWidth: 0,
+                        hoverOffset: 4 // NEU: Hebt das Segment beim Hovern hervor
                     }]
                 },
                 options: {
                     responsive: true, maintainAspectRatio: false,
                     cutout: '65%',
-                    plugins: { legend: { position: 'right', labels: { boxWidth: 12 } } }
+                    plugins: { 
+                        legend: { position: 'right', labels: { boxWidth: 12 } },
+                        tooltip: { // NEU: Eigener Tooltip mit Prozentrechnung
+                            callbacks: {
+                                label: function(context) {
+                                    let val = context.parsed || 0;
+                                    let dataset = context.chart.data.datasets[context.datasetIndex];
+                                    let total = dataset.data.reduce((acc, current) => acc + current, 0);
+                                    let percentage = total > 0 ? Math.round((val / total) * 100) : 0;
+                                    return ` ${context.label}: ${val} Tage (${percentage}%)`;
+                                }
+                            }
+                        }
+                    }
                 }
             });
 
@@ -1218,12 +1236,23 @@
                         label: 'HO Tage',
                         data: this.yearData.map(d => d.days_ho),
                         backgroundColor: '#4CAF50',
+                        hoverBackgroundColor: '#66BB6A', // NEU: Balken leuchtet heller beim Hovern
                         borderRadius: 4
                     }]
                 },
                 options: {
                     responsive: true, maintainAspectRatio: false,
-                    plugins: { legend: { display: false } },
+                    interaction: { mode: 'index', intersect: false }, // NEU: Treffererkennung auch neben dem Balken
+                    plugins: { 
+                        legend: { display: false },
+                        tooltip: { // NEU: Eigener Tooltip
+                            callbacks: {
+                                label: function(context) {
+                                    return ` ${context.parsed.y} Home Office Tage`;
+                                }
+                            }
+                        }
+                    },
                     scales: { 
                         y: { beginAtZero: true, suggestedMax: 20, ticks: { stepSize: 5 } },
                         x: { grid: { display: false } }
