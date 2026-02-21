@@ -49,7 +49,8 @@ def test_gui_create_standard_entry(page: Page):
     
     expect(page.get_by_label("Startzeit").first).to_have_value("08:00")
     
-    override_input = page.get_by_label(re.compile("Offiziellen PDF-Saldo", re.IGNORECASE))
+    # ANGEPASST: Sucht jetzt nach dem neuen Label "Gleitzeit Saldo"
+    override_input = page.get_by_label("Gleitzeit Saldo")
     expect(override_input).to_be_visible()
     override_input.fill("12.5")
     override_input.press("Tab")
@@ -58,7 +59,9 @@ def test_gui_create_standard_entry(page: Page):
     
     expect(page.locator("table").first).to_contain_text("7,80")
     expect(page.locator("table").first).to_contain_text("+12,50")
-    expect(page.locator("table").locator(".mdi-anchor").first).to_be_visible()
+    
+    # ANGEPASST: Sucht nach dem neuen PDF Icon (statt mdi-anchor)
+    expect(page.locator("table").locator(".mdi-file-pdf-box").first).to_be_visible()
 
 def test_gui_split_entry(page: Page):
     row = page.locator(".day-row").first
@@ -123,10 +126,7 @@ def test_gui_pdf_import_dialog_check(page: Page):
         pytest.skip("Private PDF fehlt.")
 
     page.goto(BASE_URL)
-    # FIX: Das Hidden-Input Element direkt ansprechen, um die Datei zu setzen
     page.locator('input[type="file"][accept=".pdf"]').set_input_files(pdf_path)
-    
-    # Erst danach taucht der Dialog auf!
     expect(page.get_by_text("PDF Import (Lokal)")).to_be_visible()
 
 def test_pdf_import_standard_month(page: Page):
@@ -170,11 +170,8 @@ def test_pdf_import_overwrite_checkbox(page: Page):
         pytest.skip("Private PDF fehlt.")
 
     page.goto(BASE_URL)
-    
-    # FIX: Erst PDF hochladen
     page.locator('input[type="file"][accept=".pdf"]').set_input_files(pdf_path)
     
-    # Dialog prüfen
     dialog = page.get_by_text("PDF Import (Lokal)")
     expect(dialog).to_be_visible()
     

@@ -73,7 +73,6 @@
     .day-row { transition: background-color 0.2s; border-bottom: 1px solid rgba(128,128,128, 0.05); }
     .day-row:hover { background-color: rgba(128,128,128, 0.08) !important; }
     
-    /* HEUTIGER TAG HIGHLIGHT (Dezent & Elegant) */
     .day-row.is-today td { background-color: rgba(33, 150, 243, 0.08) !important; }
     .day-row.is-today td:first-child { box-shadow: inset 3px 0 0 0 #2196F3; }
     .cal-cell.is-today { border: 2px solid #2196F3; background-color: rgba(33, 150, 243, 0.05); }
@@ -167,9 +166,9 @@
           
           <v-list density="compact" nav>
               <v-list-subheader class="text-uppercase text-caption font-weight-bold">Ansichten</v-list-subheader>
-              <v-list-item prepend-icon="mdi-format-list-bulleted" title="Listenansicht" :active="viewMode === 'list'" @click="viewMode = 'list'; loadMonthData(); if($vuetify.display.mobile) drawer=false;" color="primary" rounded="lg"></v-list-item>
-              <v-list-item prepend-icon="mdi-calendar-month" title="Kalender" :active="viewMode === 'calendar'" @click="viewMode = 'calendar'; loadMonthData(); if($vuetify.display.mobile) drawer=false;" color="primary" rounded="lg"></v-list-item>
-              <v-list-item prepend-icon="mdi-chart-bar" title="Jahresübersicht" :active="viewMode === 'year'" @click="viewMode = 'year'; loadYearData(); if($vuetify.display.mobile) drawer=false;" color="primary" rounded="lg"></v-list-item>
+              <v-list-item prepend-icon="mdi-format-list-bulleted" title="Listenansicht" :active="viewMode === 'list'" @click="viewMode = 'list'; if($vuetify.display.mobile) drawer=false;" color="primary" rounded="lg"></v-list-item>
+              <v-list-item prepend-icon="mdi-calendar-month" title="Kalender" :active="viewMode === 'calendar'" @click="viewMode = 'calendar'; if($vuetify.display.mobile) drawer=false;" color="primary" rounded="lg"></v-list-item>
+              <v-list-item prepend-icon="mdi-chart-bar" title="Jahresübersicht" :active="viewMode === 'year'" @click="viewMode = 'year'; if($vuetify.display.mobile) drawer=false;" color="primary" rounded="lg"></v-list-item>
               
               <v-divider class="my-4 opacity-20"></v-divider>
               
@@ -183,6 +182,7 @@
       </v-navigation-drawer>
 
       <v-app-bar color="background" density="compact" elevation="0" border="bottom">
+        <v-progress-linear v-if="isSaving" indeterminate color="primary" class="position-absolute" style="top: 0; width: 100%; z-index: 9999;"></v-progress-linear>
         <v-app-bar-nav-icon @click.stop="drawer = !drawer" v-if="$vuetify.display.mobile"></v-app-bar-nav-icon>
         <v-spacer></v-spacer>
         <v-btn icon @click="toggleTheme" class="mr-2" variant="tonal" size="small" color="grey">
@@ -227,7 +227,10 @@
                     <div class="d-flex flex-column justify-center w-100">
                         <span class="stat-label justify-start mb-1 text-left">Home Office Budget</span>
                         <div class="d-flex justify-space-between align-end">
-                            <div class="mono-num font-weight-bold text-subtitle-1" :class="budgetStateColor" style="line-height: 1;"><span v-if="budgetRemainingDays > 0">+</span>[[ formatOneDecimal(budgetRemainingDays) ]] <span class="text-caption opacity-50">Tage</span></div>
+                            <div class="d-flex flex-column">
+                                <div class="mono-num font-weight-bold text-subtitle-1" :class="budgetStateColor" style="line-height: 1;"><span v-if="budgetRemainingDays > 0">+</span>[[ formatOneDecimal(budgetRemainingDays) ]] <span class="text-caption opacity-50">Tage</span></div>
+                                <div class="text-caption opacity-60 mono-num mt-1">[[ formatNum(budgetRemainingHours) ]] h</div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -297,7 +300,7 @@
                                                 <td class="text-center mono-num" style="vertical-align: middle;">
                                                     <div v-if="index === 0" class="font-weight-bold" :class="item.glz_saldo >= 0 ? 'text-green' : 'text-red'">
                                                         <span v-if="item.glz_saldo > 0">+</span>[[ formatNum(item.glz_saldo) ]] <span class="text-caption opacity-50 font-weight-regular">h</span>
-                                                        <v-icon v-if="item.glz_override !== null" size="x-small" color="blue-grey" class="ml-1 opacity-80" title="Offizieller GLZ Anker">mdi-anchor</v-icon>
+                                                        <v-icon v-if="item.glz_override !== null" size="x-small" color="blue-grey" class="ml-1 opacity-80" title="PDF / Manueller GLZ Saldo">mdi-file-pdf-box</v-icon>
                                                     </div>
                                                 </td>
 
@@ -329,7 +332,7 @@
                                         </div>
                                         <div class="text-right">
                                             <div class="text-caption font-weight-bold mono-num" :class="item.glz_saldo >= 0 ? 'text-green' : 'text-red'">
-                                                <v-icon v-if="item.glz_override !== null" size="x-small" color="blue-grey" class="mr-1 opacity-80">mdi-anchor</v-icon>
+                                                <v-icon v-if="item.glz_override !== null" size="x-small" color="blue-grey" class="mr-1 opacity-80">mdi-file-pdf-box</v-icon>
                                                 <span v-if="item.glz_saldo > 0">+</span>[[ formatNum(item.glz_saldo) ]] <span class="opacity-50">h</span>
                                             </div>
                                         </div>
@@ -362,7 +365,7 @@
                                         <div class="d-flex justify-space-between align-start">
                                             <span class="cal-date mono-num" :class="{'opacity-50': item.is_off_day, 'text-primary': isToday(item.date)}">
                                                 [[ item.day_num ]]
-                                                <v-icon v-if="item.glz_override !== null" size="x-small" color="blue-grey" class="ml-1 opacity-80" title="Offizieller GLZ Anker">mdi-anchor</v-icon>
+                                                <v-icon v-if="item.glz_override !== null" size="x-small" color="blue-grey" class="ml-1 opacity-80" title="PDF / Manueller GLZ Saldo">mdi-file-pdf-box</v-icon>
                                             </span>
                                         </div>
                                         <div v-if="item.is_holiday" class="cal-holiday-name text-truncate" :title="item.holiday_name">[[ item.holiday_name ]]</div>
@@ -481,13 +484,13 @@
                 
                 <div class="pa-3 rounded-lg border" style="background-color: rgba(255,255,255,0.02); border-color: rgba(255,255,255,0.1) !important;">
                     <div class="d-flex justify-space-between align-center mb-2">
-                        <div class="text-caption font-weight-bold text-uppercase letter-spacing-1"><v-icon size="small" color="blue-grey" class="mr-1">mdi-anchor</v-icon>GLZ Sync-Anker</div>
+                        <div class="text-caption font-weight-bold text-uppercase letter-spacing-1"><v-icon size="small" color="blue-grey" class="mr-1">mdi-file-pdf-box</v-icon>Offizieller PDF Saldo</div>
                         <div class="text-caption opacity-70">Stand: <strong class="mono-num text-body-2">[[ formatNum(editingDay.glz_saldo) ]] h</strong></div>
                     </div>
                     <v-text-field 
                         v-if="editingDay.entries && editingDay.entries.length > 0"
                         v-model.number="editingDay.entries[0].glz_override" 
-                        label="Offiziellen PDF-Saldo überschreiben" 
+                        label="Gleitzeit Saldo" 
                         placeholder="z.B. 12.5" 
                         variant="outlined" density="compact" hide-details bg-color="transparent" class="mono-num" type="number" step="0.01" 
                         @change="saveSingleEntry(editingDay.date)">
@@ -571,6 +574,8 @@
   </div>
 
   <script>
+    let activeCharts = { donut: null, bar: null };
+
     const { createApp } = Vue
     const { createVuetify } = Vuetify
     const vuetify = createVuetify({ theme: { defaultTheme: 'dark' } })
@@ -629,7 +634,7 @@
     };
     Store.init();
 
-    // --- LOGIC PORT (Python -> JS) ---
+    // --- LOGIC PORT ---
     function normalizeTimeInput(t) {
         if(!t) return ""; t = t.toString().trim().replace('.', ':');
         let h=0, m=0;
@@ -712,8 +717,7 @@
           seriesDialog: { show: false, start: '', end: '', weekdays: [4], type: 'planned', overwrite: false },
           customHolidays: {}, newCustomHoliday: { _oldDate: null, date: '', name: '', hours: 0 },
           fileHandle: null, fileName: '', storedHandleName: '', unsavedChanges: false, snackbar: { show: false, text: '', color: 'success' },
-          types: [{ title: 'Home Office', value: 'home' }, { title: 'Büro', value: 'office' }, { title: 'Geplant (HO)', value: 'planned' }, { title: 'Krank', value: 'sick' }, { title: 'Urlaub', value: 'vacation' }, { title: 'Gleitzeit', value: 'glz' }, { title: 'Dienstreise', value: 'dr' }, { title: 'Leer', value: '' }],
-          chartInstances: { donut: null, bar: null }
+          types: [{ title: 'Home Office', value: 'home' }, { title: 'Büro', value: 'office' }, { title: 'Geplant (HO)', value: 'planned' }, { title: 'Krank', value: 'sick' }, { title: 'Urlaub', value: 'vacation' }, { title: 'Gleitzeit', value: 'glz' }, { title: 'Dienstreise', value: 'dr' }, { title: 'Leer', value: '' }]
         }
       },
       computed: {
@@ -737,8 +741,12 @@
       },
       watch: { 
           viewMode(newVal) { 
-              if(newVal === 'year') this.loadYearData(); 
-              else this.loadMonthData(); 
+              if(newVal === 'year') {
+                  this.loadYearData(); 
+              } else {
+                  this.destroyCharts();
+                  this.loadMonthData(); 
+              }
           } 
       },
       mounted() { 
@@ -1183,12 +1191,21 @@
             }
         },
 
-        // PORTIERT: Interaktive Chart.js Tooltips und Hover-Effekte
+        destroyCharts() {
+            if (activeCharts.donut) {
+                activeCharts.donut.destroy();
+                activeCharts.donut = null;
+            }
+            if (activeCharts.bar) {
+                activeCharts.bar.destroy();
+                activeCharts.bar = null;
+            }
+        },
+
         renderCharts() {
             if (!window.Chart) return;
             
-            if (this.chartInstances.donut) this.chartInstances.donut.destroy();
-            if (this.chartInstances.bar) this.chartInstances.bar.destroy();
+            this.destroyCharts();
 
             const ctxDonut = document.getElementById('donutChart');
             const ctxBar = document.getElementById('barChart');
@@ -1197,7 +1214,7 @@
             Chart.defaults.color = 'rgba(255, 255, 255, 0.7)';
             Chart.defaults.borderColor = 'rgba(255, 255, 255, 0.1)';
 
-            this.chartInstances.donut = new Chart(ctxDonut, {
+            activeCharts.donut = new Chart(ctxDonut, {
                 type: 'doughnut',
                 data: {
                     labels: ['Home Office', 'Büro', 'Urlaub'],
@@ -1205,15 +1222,16 @@
                         data: [this.yearTotalHo, this.yearTotalOffice, this.yearTotalVacation],
                         backgroundColor: ['#4CAF50', '#FFC107', '#9C27B0'],
                         borderWidth: 0,
-                        hoverOffset: 4 // NEU: Hebt das Segment beim Hovern hervor
+                        hoverOffset: 10
                     }]
                 },
                 options: {
                     responsive: true, maintainAspectRatio: false,
                     cutout: '65%',
+                    layout: { padding: 10 },
                     plugins: { 
                         legend: { position: 'right', labels: { boxWidth: 12 } },
-                        tooltip: { // NEU: Eigener Tooltip mit Prozentrechnung
+                        tooltip: { 
                             callbacks: {
                                 label: function(context) {
                                     let val = context.parsed || 0;
@@ -1228,7 +1246,7 @@
                 }
             });
 
-            this.chartInstances.bar = new Chart(ctxBar, {
+            activeCharts.bar = new Chart(ctxBar, {
                 type: 'bar',
                 data: {
                     labels: ['Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez'],
@@ -1236,16 +1254,16 @@
                         label: 'HO Tage',
                         data: this.yearData.map(d => d.days_ho),
                         backgroundColor: '#4CAF50',
-                        hoverBackgroundColor: '#66BB6A', // NEU: Balken leuchtet heller beim Hovern
+                        hoverBackgroundColor: '#66BB6A',
                         borderRadius: 4
                     }]
                 },
                 options: {
                     responsive: true, maintainAspectRatio: false,
-                    interaction: { mode: 'index', intersect: false }, // NEU: Treffererkennung auch neben dem Balken
+                    interaction: { mode: 'index', intersect: false },
                     plugins: { 
                         legend: { display: false },
-                        tooltip: { // NEU: Eigener Tooltip
+                        tooltip: { 
                             callbacks: {
                                 label: function(context) {
                                     return ` ${context.parsed.y} Home Office Tage`;
