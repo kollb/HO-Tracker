@@ -100,7 +100,7 @@ def test_v2_gui_settings_custom_holiday(page: Page):
     expect(dialog).not_to_be_visible()
 
 def test_v2_gui_switch_views(page: Page):
-    # Bento-Grid prüfen (Ersatz für Status-Bar)
+    # Bento-Grid prüfen
     expect(page.locator(".bento-grid").first).to_be_visible()
     
     page.locator(".view-btn").filter(has_text="Jahr").click()
@@ -139,9 +139,10 @@ def test_v2_pdf_import_standard_month(page: Page):
     
     # Werte prüfen
     expect(row.locator("select")).to_have_value("home")
-    inputs = row.locator("input[placeholder='-']")
-    expect(inputs.nth(0)).to_have_value("07:40")
-    expect(inputs.nth(1)).to_have_value("16:30")
+    
+    # GEFIXT: Sucht jetzt nach den neuen Text-Platzhaltern "Start" und "Ende"
+    expect(row.locator("input[placeholder='Start']")).to_have_value("07:40")
+    expect(row.locator("input[placeholder='Ende']")).to_have_value("16:30")
 
 def test_v2_pdf_import_missing_booking(page: Page):
     pdf_path = os.path.join(PRIVATE_DIR, "error.pdf")
