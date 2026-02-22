@@ -510,23 +510,6 @@
          [[ snackbar.text ]]
       </v-snackbar>
 
-      <input type="file" ref="pdfInput" style="display: none" accept=".pdf" @change="onPdfFileChange">
-      <input type="file" ref="jsonInput" style="display: none" accept=".json" @change="fallbackLoadJson">
-      
-      <v-dialog v-model="importDialog.show" max-width="400">
-          <v-card class="glass-effect" rounded="xl" style="background: #1e293b !important;">
-              <v-card-title class="py-3 border-b text-bright d-flex align-center text-body-1"><v-icon start color="primary" size="small">mdi-file-pdf-box</v-icon> PDF Import (Lokal)</v-card-title>
-              <v-card-text class="pt-4">
-                  <p class="text-caption mb-4 text-slate">Verarbeitet den Zeitnachweis sicher und komplett offline in deinem Browser. Erkennt Zeiten, Splits und Salden.</p>
-                  <v-checkbox v-model="importDialog.overwrite" label="Existierende Einträge überschreiben" color="primary" hide-details density="compact"></v-checkbox>
-              </v-card-text>
-              <v-card-actions class="px-4 pb-4"><v-spacer></v-spacer>
-                  <v-btn variant="text" color="slate" size="small" @click="importDialog.show = false">Abbrechen</v-btn>
-                  <v-btn variant="flat" color="primary" size="small" @click="processPdfImport">Import starten</v-btn>
-              </v-card-actions>
-          </v-card>
-      </v-dialog>
-
       <v-dialog v-model="dialogEditDay" max-width="500">
         <v-card v-if="editingDay" class="glass-effect" rounded="xl" style="background: #1e293b !important;">
             <v-card-title class="d-flex justify-space-between align-center py-3 border-b" style="border-color: rgba(255,255,255,0.05) !important;">
@@ -554,6 +537,23 @@
             </v-card-text>
             <v-card-actions class="px-5 pb-5"><v-spacer></v-spacer><v-btn variant="flat" color="primary" @click="dialogEditDay = false">Fertig</v-btn></v-card-actions>
         </v-card>
+      </v-dialog>
+
+      <input type="file" ref="pdfInput" style="display: none" accept=".pdf" @change="onPdfFileChange">
+      <input type="file" ref="jsonInput" style="display: none" accept=".json" @change="fallbackLoadJson">
+      
+      <v-dialog v-model="importDialog.show" max-width="400">
+          <v-card class="glass-effect" rounded="xl" style="background: #1e293b !important;">
+              <v-card-title class="py-3 border-b text-bright d-flex align-center text-body-1"><v-icon start color="primary" size="small">mdi-file-pdf-box</v-icon> PDF Import (Lokal)</v-card-title>
+              <v-card-text class="pt-4">
+                  <p class="text-caption mb-4 text-slate">Verarbeitet den Zeitnachweis sicher und komplett offline in deinem Browser. Erkennt Zeiten, Splits und Salden.</p>
+                  <v-checkbox v-model="importDialog.overwrite" label="Existierende Einträge überschreiben" color="primary" hide-details density="compact"></v-checkbox>
+              </v-card-text>
+              <v-card-actions class="px-4 pb-4"><v-spacer></v-spacer>
+                  <v-btn variant="text" color="slate" size="small" @click="importDialog.show = false">Abbrechen</v-btn>
+                  <v-btn variant="flat" color="primary" size="small" @click="processPdfImport">Import starten</v-btn>
+              </v-card-actions>
+          </v-card>
       </v-dialog>
 
       <v-dialog v-model="seriesDialog.show" max-width="500">
@@ -883,8 +883,6 @@
                 let cnt = 0;
                 
                 const germanMonths = {'Januar':1,'Februar':2,'März':3,'April':4,'Mai':5,'Juni':6,'Juli':7,'August':8,'September':9,'Oktober':10,'November':11,'Dezember':12};
-                
-                // NEU: krank im Dienst eingefügt
                 const TYPE_MAP = { 
                     "Mobil": "home", "Telearb.": "home", "Telearb": "home", 
                     "anwesend": "office", 
@@ -1304,7 +1302,6 @@
                     }
                 }
                 
-                // NEU: work_hours_target hinzugefügt!
                 this.yearData.push({ 
                     month: m, 
                     days_ho, 
@@ -1449,10 +1446,14 @@
         },
         
         openSeriesDialog() { const nextM = new Date(); nextM.setMonth(nextM.getMonth() + 1); const y = nextM.getFullYear(), m = nextM.getMonth(); const lastDay = new Date(y, m + 1, 0).getDate(); this.seriesDialog.start = `${y}-${(m+1).toString().padStart(2,'0')}-01`; this.seriesDialog.end = `${y}-${(m+1).toString().padStart(2,'0')}-${lastDay}`; this.seriesDialog.show = true; },
+        
+        // NEU: Smarter Serienplaner (analog zur app.py)
         saveSeriesPlan() {
             this.seriesDialog.show = false;
             let curr = new Date(this.seriesDialog.start); const end = new Date(this.seriesDialog.end);
             let cnt = 0;
+            const todayStr = new Date().toISOString().split('T')[0];
+            
             while(curr <= end) {
                 const dayIdx = (curr.getDay()+6)%7;
                 if(this.seriesDialog.weekdays.includes(dayIdx)) {
@@ -1462,7 +1463,25 @@
                     
                     const existing = Store.getEntries()[dStr] || [];
                     if(this.seriesDialog.overwrite || existing.length === 0) {
-                        Store.saveDayEntries(dStr, [{type: this.seriesDialog.type, start:'', end:'', comment:''}]);
+                        
+                        let finalType = this.seriesDialog.type;
+                        let startT = '';
+                        let endT = '';
+
+                        // Smarte Logik: Zukünftiges HO ist "planned", rest füllt Zeiten auf
+                        if (finalType === 'home' && dStr > todayStr) {
+                            finalType = 'planned';
+                        } else if (['home', 'office', 'dr'].includes(finalType)) {
+                            if (info.target > 0) {
+                                startT = this.settings.default_start_time || '08:00';
+                                let gross = calculateGrossTimeNeeded(info.target);
+                                let [h,m] = startT.split(':').map(Number);
+                                let min = h*60 + m + (gross * 60);
+                                endT = `${Math.floor(min/60).toString().padStart(2,'0')}:${Math.round(min%60).toString().padStart(2,'0')}`;
+                            }
+                        }
+
+                        Store.saveDayEntries(dStr, [{type: finalType, start: startT, end: endT, comment:''}]);
                         cnt++;
                     }
                 }
