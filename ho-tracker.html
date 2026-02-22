@@ -454,6 +454,7 @@
                                             <th class="text-center font-weight-bold text-slate">Büro</th>
                                             <th class="text-center font-weight-bold text-slate">Urlaub</th>
                                             <th class="text-center font-weight-bold text-slate">Budget Nutzung</th>
+                                            <th class="text-center font-weight-bold text-slate">Arbeitsstunden</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -468,6 +469,15 @@
                                                     <div class="text-caption mono-num text-slate" style="font-size: 0.85rem !important;">[[ formatNum(stat.ho_hours_made) ]] / [[ formatNum(stat.ho_hours_allowed) ]]h</div>
                                                 </div>
                                             </td>
+                                            <td class="text-center text-slate mono-num" style="font-size: 0.85rem;">
+                                                <div class="d-flex align-center justify-center" v-if="(stat.ho_hours_made + stat.office_hours_made) > 0 || stat.work_hours_target > 0">
+                                                    <div class="text-right" style="width: 50px;">[[ formatNum(stat.ho_hours_made + stat.office_hours_made) ]]</div>
+                                                    <div class="text-center mx-1" style="width: 10px;">/</div>
+                                                    <div class="text-right" style="width: 50px;">[[ formatNum(stat.work_hours_target) ]]</div>
+                                                    <div class="ml-1 text-left" style="width: 15px;">h</div>
+                                                </div>
+                                                <span v-else>-</span>
+                                            </td>
                                         </tr>
                                     </tbody>
                                     <tfoot style="background: rgba(15, 23, 42, 0.8);" class="font-weight-bold border-t">
@@ -476,6 +486,7 @@
                                             <td class="text-center"><span class="cal-pill type-home mono-num text-bright" style="font-size: 0.9rem;">[[ yearTotalHo ]] T.</span></td>
                                             <td class="text-center"><span class="cal-pill type-office mono-num text-bright" style="font-size: 0.9rem;">[[ yearTotalOffice ]] T.</span></td>
                                             <td class="text-center"><span class="cal-pill type-vacation mono-num text-bright" style="font-size: 0.9rem;">[[ yearTotalVacation ]] T.</span></td>
+                                            <td class="text-center"></td>
                                             <td class="text-center"></td>
                                         </tr>
                                     </tfoot>
@@ -556,7 +567,7 @@
                 <div class="mb-3 d-flex justify-space-between rounded-lg pa-1 mt-1" style="background: rgba(0,0,0,0.2);">
                     <v-checkbox v-for="(day, idx) in ['Mo','Di','Mi','Do','Fr']" :key="idx" v-model="seriesDialog.weekdays" :value="idx" :label="day" density="compact" hide-details color="primary"></v-checkbox>
                 </div>
-                <v-select v-model="seriesDialog.type" :items="types" label="Status setzen auf" item-title="title" item-value="value" variant="outlined" density="compact"></v-select>
+                <v-select v-model="seriesDialog.type" :items="baseTypes" label="Status setzen auf" item-title="title" item-value="value" variant="outlined" density="compact"></v-select>
                 <v-checkbox v-model="seriesDialog.overwrite" label="Vorhandene überschreiben" density="compact" color="warning" hide-details></v-checkbox>
             </v-card-text>
             <v-card-actions class="px-4 pb-4"><v-spacer></v-spacer>
@@ -872,10 +883,12 @@
                 let cnt = 0;
                 
                 const germanMonths = {'Januar':1,'Februar':2,'März':3,'April':4,'Mai':5,'Juni':6,'Juli':7,'August':8,'September':9,'Oktober':10,'November':11,'Dezember':12};
+                
+                // NEU: krank im Dienst eingefügt
                 const TYPE_MAP = { 
                     "Mobil": "home", "Telearb.": "home", "Telearb": "home", 
                     "anwesend": "office", 
-                    "Krank": "sick", 
+                    "Krank": "sick", "krank im Dienst": "sick", "Krank im Dienst": "sick",
                     "Urlaub": "vacation", "Erholungs": "vacation", "Zusatz": "vacation", "Sonder": "vacation",
                     "Gleitzeit": "glz", "GLZ": "glz",
                     "Dienstreise": "dr", "Reise": "dr", "Fortbildung": "dr",
@@ -951,10 +964,9 @@
                     
                     if (foundType === "missing") {
                         dataStore[day].push({ type: '', start: '', end: '', comment: '⚠️ Fehlt im PDF', glz_override: null, glz_override_source: null });
-                        return; // WICHTIG: Überspringe GLZ-Speicherung bei Fehler
+                        return;
                     } 
                     else if (validTimes.length >= 2) {
-                        // FIX: Splits extrahieren!
                         for(let i=0; i<validTimes.length-1; i+=2) {
                             let e_glz = (i===0) ? glz_saldo_val : null;
                             let src = e_glz !== null ? 'pdf' : null;
@@ -1005,7 +1017,6 @@
                      const existing = Store.getEntries()[dateIso] || [];
                      
                      if(this.importDialog.overwrite || existing.length === 0) {
-                         // Duplikat-Schutz mit Startzeit-Beachtung für Splits
                          let finalBlocks = [];
                          for(let e of cleanBlocks) {
                              if(!this.importDialog.overwrite) {
@@ -1187,7 +1198,6 @@
                     if(e.glz_override != null) {
                         dayOverride = e.glz_override;
                         dayOverrideSource = e.glz_override_source;
-                        // Frontend-Formatierung direkt für das Eingabefeld
                         e.glz_override = (e.glz_override > 0 ? '+' : '') + this.formatNum(e.glz_override);
                     }
                     
@@ -1293,7 +1303,18 @@
                         }
                     }
                 }
-                this.yearData.push({ month: m, days_ho, days_office: days_off, days_vacation: days_vac, ho_hours_made: parseFloat(ho_h.toFixed(2)), ho_hours_allowed: parseFloat((total_target_month * (this.settings.ho_quota_percent/100)).toFixed(2)), office_hours_made: parseFloat(off_h.toFixed(2)) });
+                
+                // NEU: work_hours_target hinzugefügt!
+                this.yearData.push({ 
+                    month: m, 
+                    days_ho, 
+                    days_office: days_off, 
+                    days_vacation: days_vac, 
+                    ho_hours_made: parseFloat(ho_h.toFixed(2)), 
+                    ho_hours_allowed: parseFloat((total_target_month * (this.settings.ho_quota_percent/100)).toFixed(2)), 
+                    office_hours_made: parseFloat(off_h.toFixed(2)),
+                    work_hours_target: parseFloat(total_target_month.toFixed(2))
+                });
             }
 
             if (this.viewMode === 'year') {
@@ -1414,7 +1435,6 @@
                      if(e.end) e.end = normalizeTimeInput(e.end) || e.end;
                      if(e.comment) e.comment = e.comment.trim();
                      
-                     // Parser für den Override
                      if (e.glz_override !== null && e.glz_override !== undefined && e.glz_override !== '') {
                         e.glz_override = parseFloat(String(e.glz_override).replace(',', '.'));
                         if (isNaN(e.glz_override)) e.glz_override = null;
