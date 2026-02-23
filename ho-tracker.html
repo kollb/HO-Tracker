@@ -141,6 +141,7 @@
     .text-indigo { color: #818cf8 !important; } 
     .text-slate { color: #94a3b8; }
     .text-bright { color: #f8fafc; }
+    .text-neutral { color: #f8fafc !important; }
 
     .type-home { color: #10b981; background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.2); }
     .type-home::before { background: #10b981; }
@@ -161,9 +162,9 @@
     .type-dr::before { background: #0ea5e9; }
 
     /* Kalender & Rest */
-    .cal-grid-wrapper { border-radius: 20px; overflow: hidden; border: 1px solid rgba(255,255,255,0.05); background: rgba(15,23,42,0.5); padding: 1px; max-width: 1100px; margin: 0 auto;}
-    .cal-header-row { display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; font-size: 0.8rem; font-weight: 600; text-transform: uppercase; color: #64748b; padding: 12px 0; background: rgba(30,41,59,0.3); border-bottom: 1px solid rgba(255,255,255,0.05);}
+    .cal-grid-wrapper { border-radius: 20px; overflow-x: auto; border: 1px solid rgba(255,255,255,0.05); background: rgba(15,23,42,0.5); padding: 1px; max-width: 1100px; margin: 0 auto;}
     .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; background: rgba(255,255,255,0.05); }
+    .cal-header-cell { text-align: center; font-size: 0.8rem; font-weight: 600; text-transform: uppercase; color: #64748b; padding: 12px 0; background: rgba(30,41,59,0.3); border-bottom: 1px solid rgba(255,255,255,0.05); }
     .cal-cell { background: #0f172a; min-height: 100px; padding: 12px; cursor: pointer; transition: background 0.2s; display: flex; flex-direction: column; gap: 4px;}
     .cal-cell:hover { background: rgba(30,41,59,0.8); }
     .cal-cell.is-today { background: rgba(59, 130, 246, 0.05); border: 1px solid #3b82f6;}
@@ -181,12 +182,15 @@
     .dot.red { background-color: #ef4444; }
     .dot.orange { background-color: #f59e0b; }
 
+    /* Force text to not wrap in year view to enable scroll */
+    .year-table th, .year-table td { white-space: nowrap !important; }
+
     @media (max-width: 1200px) {
         .bento-grid { grid-template-columns: repeat(2, 1fr); }
         .bento-card { height: 120px; }
     }
     
-    /* === HIER IST DAS NEUE, OPTIMIERTE MOBILE LAYOUT === */
+    /* === MOBILE LAYOUT === */
     @media (max-width: 768px) {
         .bento-grid { grid-template-columns: 1fr; gap: 12px; margin-bottom: 16px;}
         .bento-card { height: auto; }
@@ -204,7 +208,6 @@
         .tl-dot { left: 16px; top: 22px; transform: none; }
         .tl-date-cell { width: 100%; margin-bottom: 2px; }
         
-        /* Box-Design für saubere Felder */
         .tl-col-status { width: 100%; background: rgba(0,0,0,0.25); border-radius: 6px; border: 1px solid rgba(255,255,255,0.03); }
         .tl-col-start { width: calc(50% - 4px); background: rgba(0,0,0,0.25); border-radius: 6px; border: 1px solid rgba(255,255,255,0.03); }
         .tl-col-end { width: calc(50% - 4px); background: rgba(0,0,0,0.25); border-radius: 6px; border: 1px solid rgba(255,255,255,0.03); }
@@ -283,10 +286,10 @@
                     </div>
                 </div>
 
-                <div class="bento-card glass-effect" :style="stats.current_glz >= 0 ? 'border-top: 2px solid #10b981 !important;' : 'border-top: 2px solid #ef4444 !important;'">
-                    <div class="bento-label"><v-icon size="small" class="mr-2" :color="stats.current_glz >= 0 ? '#10b981' : '#ef4444'">mdi-clock-outline</v-icon> Gleitzeit</div>
+                <div class="bento-card glass-effect" :style="stats.current_glz < 0 ? 'border-top: 2px solid #ef4444 !important;' : 'border-top: 2px solid #64748b !important;'">
+                    <div class="bento-label"><v-icon size="small" class="mr-2" :color="stats.current_glz < 0 ? '#ef4444' : '#94a3b8'">mdi-clock-outline</v-icon> Gleitzeit</div>
                     <div>
-                        <div class="bento-value mono-num" :class="stats.current_glz >= 0 ? 'text-mint' : 'text-error'">
+                        <div class="bento-value mono-num" :class="stats.current_glz < 0 ? 'text-error' : 'text-neutral'">
                             <span v-if="stats.current_glz > 0">+</span>[[ formatNum(stats.current_glz) ]] <span style="font-size: 1rem; opacity: 0.5; color: #94a3b8;">h</span>
                         </div>
                         <div class="bento-sub">Aktueller Saldo</div>
@@ -377,6 +380,7 @@
 
                                         <div class="tl-col-glz d-flex justify-md-end justify-start align-center pr-md-2" style="gap: 4px;">
                                             <template v-if="index === 0">
+                                                <div class="d-md-none text-caption text-slate font-weight-bold mr-1" style="line-height: 30px;">GLZ:</div>
                                                 <v-icon v-if="entry.glz_override !== null && entry.glz_override !== undefined" 
                                                         size="14" 
                                                         color="#0ea5e9" 
@@ -421,30 +425,31 @@
 
                     <div v-if="viewMode === 'calendar'">
                         <div class="cal-grid-wrapper">
-                            <div class="cal-header-row">
-                                <div>Mo</div><div>Di</div><div>Mi</div><div>Do</div><div>Fr</div><div class="text-error">Sa</div><div class="text-error">So</div>
-                            </div>
-                            <div class="cal-grid">
-                                <div v-for="n in paddingDays" :key="'pad-'+n" class="cal-cell" style="background: rgba(15,23,42,0.3);"></div>
-                                <template v-for="item in items" :key="item ? item.date : 'cal-unk'">
-                                    <div v-if="item && item.row_type === 'day'" class="cal-cell position-relative"
-                                         :class="{'is-today': isToday(item.date), 'is-off-day': item.is_off_day}"
-                                         @click="openEditDialog(item)">
-                                        <div class="d-flex justify-space-between align-start">
-                                            <span class="cal-date-num mono-num">[[ item.day_num ]]</span>
-                                            <div v-if="item.total_net > 0 || item.main_type === 'planned'" class="text-caption text-slate mono-num">[[ formatNum(item.total_net) ]]h</div>
-                                        </div>
-                                        <div v-if="item.is_holiday" class="text-error font-weight-bold mt-1 text-truncate" style="line-height: 1.1; font-size: 0.75rem !important;">[[ item.holiday_name ]]</div>
-                                        <div class="mt-auto d-flex flex-column gap-1">
-                                            <div v-if="item.main_type" class="cal-pill" :class="'type-' + item.main_type">
-                                                [[ getTypeName(item.main_type, item.date) ]]
+                            <div style="min-width: 650px;">
+                                <div class="cal-grid">
+                                    <div class="cal-header-cell">Mo</div><div class="cal-header-cell">Di</div><div class="cal-header-cell">Mi</div><div class="cal-header-cell">Do</div><div class="cal-header-cell">Fr</div><div class="cal-header-cell text-error">Sa</div><div class="cal-header-cell text-error">So</div>
+
+                                    <div v-for="n in paddingDays" :key="'pad-'+n" class="cal-cell" style="background: rgba(15,23,42,0.3);"></div>
+                                    <template v-for="item in items" :key="item ? item.date : 'cal-unk'">
+                                        <div v-if="item && item.row_type === 'day'" class="cal-cell position-relative"
+                                             :class="{'is-today': isToday(item.date), 'is-off-day': item.is_off_day}"
+                                             @click="openEditDialog(item)">
+                                            <div class="d-flex justify-space-between align-start">
+                                                <span class="cal-date-num mono-num">[[ item.day_num ]]</span>
+                                                <div v-if="item.total_net > 0 || item.main_type === 'planned'" class="text-caption text-slate mono-num">[[ formatNum(item.total_net) ]]h</div>
                                             </div>
-                                            <div v-if="item.entries && item.entries.length > 1" class="text-slate mt-1" style="font-size: 0.75rem !important;">
-                                                + [[ item.entries.length - 1 ]] Split(s)
+                                            <div v-if="item.is_holiday" class="text-error font-weight-bold mt-1 text-truncate" style="line-height: 1.1; font-size: 0.75rem !important;">[[ item.holiday_name ]]</div>
+                                            <div class="mt-auto d-flex flex-column gap-1">
+                                                <div v-if="item.main_type" class="cal-pill" :class="'type-' + item.main_type">
+                                                    [[ getTypeName(item.main_type, item.date) ]]
+                                                </div>
+                                                <div v-if="item.entries && item.entries.length > 1" class="text-slate mt-1" style="font-size: 0.75rem !important;">
+                                                    + [[ item.entries.length - 1 ]] Split(s)
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
-                                </template>
+                                    </template>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -466,53 +471,55 @@
                         </v-row>
                         
                         <div class="bento-card glass-effect pa-0 overflow-hidden" style="max-width: 1100px; margin: 0 auto; height: auto;">
-                            <v-table density="compact" class="bg-transparent text-bright">
-                                <template v-slot:default>
-                                    <thead>
-                                        <tr style="background: rgba(0,0,0,0.2);">
-                                            <th class="text-left font-weight-bold text-slate">Monat</th>
-                                            <th class="text-center font-weight-bold text-slate">Home Office</th>
-                                            <th class="text-center font-weight-bold text-slate">Büro</th>
-                                            <th class="text-center font-weight-bold text-slate">Urlaub</th>
-                                            <th class="text-center font-weight-bold text-slate">Budget Nutzung</th>
-                                            <th class="text-center font-weight-bold text-slate">Arbeitsstunden</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <tr v-for="stat in yearData" :key="stat.month" class="border-b" style="border-color: rgba(255,255,255,0.05) !important;">
-                                            <td class="font-weight-bold" style="font-size: 0.95rem;">[[ getGermanMonthName(stat.month) ]]</td>
-                                            <td class="text-center"><span class="cal-pill type-home mono-num" v-if="stat.days_ho > 0" style="font-size: 0.85rem;">[[ stat.days_ho ]] T.</span><span v-else class="text-slate">-</span></td>
-                                            <td class="text-center"><span class="cal-pill type-office mono-num" v-if="stat.days_office > 0" style="font-size: 0.85rem;">[[ stat.days_office ]] T.</span><span v-else class="text-slate">-</span></td>
-                                            <td class="text-center"><span class="cal-pill type-vacation mono-num" v-if="stat.days_vacation > 0" style="font-size: 0.85rem;">[[ stat.days_vacation ]] T.</span><span v-else class="text-slate">-</span></td>
-                                            <td class="text-center">
-                                                <div class="d-flex align-center justify-center">
-                                                    <div style="width: 100px" class="mr-3"><v-progress-linear :model-value="stat.ho_hours_allowed ? (stat.ho_hours_made / stat.ho_hours_allowed)*100 : 0" color="#3b82f6" height="6" rounded bg-opacity="0.2"></v-progress-linear></div>
-                                                    <div class="text-caption mono-num text-slate" style="font-size: 0.85rem !important;">[[ formatNum(stat.ho_hours_made) ]] / [[ formatNum(stat.ho_hours_allowed) ]]h</div>
-                                                </div>
-                                            </td>
-                                            <td class="text-center text-slate mono-num" style="font-size: 0.85rem;">
-                                                <div class="d-flex align-center justify-center" v-if="(stat.ho_hours_made + stat.office_hours_made) > 0 || stat.work_hours_target > 0">
-                                                    <div class="text-right" style="width: 50px;">[[ formatNum(stat.ho_hours_made + stat.office_hours_made) ]]</div>
-                                                    <div class="text-center mx-1" style="width: 10px;">/</div>
-                                                    <div class="text-right" style="width: 50px;">[[ formatNum(stat.work_hours_target) ]]</div>
-                                                    <div class="ml-1 text-left" style="width: 15px;">h</div>
-                                                </div>
-                                                <span v-else>-</span>
-                                            </td>
-                                        </tr>
-                                    </tbody>
-                                    <tfoot style="background: rgba(15, 23, 42, 0.8);" class="font-weight-bold border-t">
-                                        <tr>
-                                            <td class="text-left py-3 text-body-1 text-bright">GESAMT</td>
-                                            <td class="text-center"><span class="cal-pill type-home mono-num text-bright" style="font-size: 0.9rem;">[[ yearTotalHo ]] T.</span></td>
-                                            <td class="text-center"><span class="cal-pill type-office mono-num text-bright" style="font-size: 0.9rem;">[[ yearTotalOffice ]] T.</span></td>
-                                            <td class="text-center"><span class="cal-pill type-vacation mono-num text-bright" style="font-size: 0.9rem;">[[ yearTotalVacation ]] T.</span></td>
-                                            <td class="text-center"></td>
-                                            <td class="text-center"></td>
-                                        </tr>
-                                    </tfoot>
-                                </template>
-                            </v-table>
+                            <div style="width: 100%; overflow-x: auto;">
+                                <v-table density="compact" class="bg-transparent text-bright year-table" style="min-width: 750px;">
+                                    <template v-slot:default>
+                                        <thead>
+                                            <tr style="background: rgba(0,0,0,0.2);">
+                                                <th class="text-left font-weight-bold text-slate">Monat</th>
+                                                <th class="text-center font-weight-bold text-slate">Home Office</th>
+                                                <th class="text-center font-weight-bold text-slate">Büro</th>
+                                                <th class="text-center font-weight-bold text-slate">Urlaub</th>
+                                                <th class="text-center font-weight-bold text-slate">Budget Nutzung</th>
+                                                <th class="text-center font-weight-bold text-slate">Arbeitsstunden</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr v-for="stat in yearData" :key="stat.month" class="border-b" style="border-color: rgba(255,255,255,0.05) !important;">
+                                                <td class="font-weight-bold" style="font-size: 0.95rem;">[[ getGermanMonthName(stat.month) ]]</td>
+                                                <td class="text-center"><span class="cal-pill type-home mono-num" v-if="stat.days_ho > 0" style="font-size: 0.85rem;">[[ stat.days_ho ]] T.</span><span v-else class="text-slate">-</span></td>
+                                                <td class="text-center"><span class="cal-pill type-office mono-num" v-if="stat.days_office > 0" style="font-size: 0.85rem;">[[ stat.days_office ]] T.</span><span v-else class="text-slate">-</span></td>
+                                                <td class="text-center"><span class="cal-pill type-vacation mono-num" v-if="stat.days_vacation > 0" style="font-size: 0.85rem;">[[ stat.days_vacation ]] T.</span><span v-else class="text-slate">-</span></td>
+                                                <td class="text-center">
+                                                    <div class="d-flex align-center justify-center">
+                                                        <div style="width: 100px" class="mr-3"><v-progress-linear :model-value="stat.ho_hours_allowed ? (stat.ho_hours_made / stat.ho_hours_allowed)*100 : 0" color="#3b82f6" height="6" rounded bg-opacity="0.2"></v-progress-linear></div>
+                                                        <div class="text-caption mono-num text-slate" style="font-size: 0.85rem !important;">[[ formatNum(stat.ho_hours_made) ]] / [[ formatNum(stat.ho_hours_allowed) ]]h</div>
+                                                    </div>
+                                                </td>
+                                                <td class="text-center text-slate mono-num" style="font-size: 0.85rem;">
+                                                    <div class="d-flex align-center justify-center" v-if="(stat.ho_hours_made + stat.office_hours_made) > 0 || stat.work_hours_target > 0">
+                                                        <div class="text-right" style="width: 50px;">[[ formatNum(stat.ho_hours_made + stat.office_hours_made) ]]</div>
+                                                        <div class="text-center mx-1" style="width: 10px;">/</div>
+                                                        <div class="text-right" style="width: 50px;">[[ formatNum(stat.work_hours_target) ]]</div>
+                                                        <div class="ml-1 text-left" style="width: 15px;">h</div>
+                                                    </div>
+                                                    <span v-else>-</span>
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                        <tfoot style="background: rgba(15, 23, 42, 0.8);" class="font-weight-bold border-t">
+                                            <tr>
+                                                <td class="text-left py-3 text-body-1 text-bright">GESAMT</td>
+                                                <td class="text-center"><span class="cal-pill type-home mono-num text-bright" style="font-size: 0.9rem;">[[ yearTotalHo ]] T.</span></td>
+                                                <td class="text-center"><span class="cal-pill type-office mono-num text-bright" style="font-size: 0.9rem;">[[ yearTotalOffice ]] T.</span></td>
+                                                <td class="text-center"><span class="cal-pill type-vacation mono-num text-bright" style="font-size: 0.9rem;">[[ yearTotalVacation ]] T.</span></td>
+                                                <td class="text-center"></td>
+                                                <td class="text-center"></td>
+                                            </tr>
+                                        </tfoot>
+                                    </template>
+                                </v-table>
+                            </div>
                         </div>
                     </div>
 
@@ -911,6 +918,7 @@
                     "Urlaub": "vacation", "Erholungs": "vacation", "Zusatz": "vacation", "Sonder": "vacation",
                     "Gleitzeit": "glz", "GLZ": "glz",
                     "Dienstreise": "dr", "Reise": "dr", "Fortbildung": "dr",
+                    "Betriebsausflug": "office", "betriebsausflug": "office",
                     "BUCHUNG FEHLT": "missing"
                 };
 
@@ -993,6 +1001,7 @@
                                 type: foundType ? foundType : "office", 
                                 start: validTimes[i], 
                                 end: validTimes[i+1], 
+                                comment: cleanText.toLowerCase().includes("betriebsausflug") ? "Betriebsausflug" : "",
                                 glz_override: e_glz, 
                                 glz_override_source: src 
                             });
@@ -1119,7 +1128,7 @@
                 const info = this.getDayInfo(curr);
                 const dayEntries = allEntries[currStr] || [];
                 
-                let isFuture = currStr > todayStr;
+                let isFuture = currStr >= todayStr;
                 
                 let dayNet = 0.0;
                 for (let e of dayEntries) {
@@ -1207,7 +1216,7 @@
                 const dateObj = new Date(year, month-1, d);
                 const dateStr = new Date(dateObj.getTime() - (dateObj.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
                 const info = this.getDayInfo(dateObj);
-                let isFuture = dateStr > todayStr;
+                let isFuture = dateStr >= todayStr;
                 
                 if (info.is_workday) { 
                     workdays++; 
@@ -1331,7 +1340,7 @@
                     
                     const entries = allEntries[dateStr] || [];
                     if(entries.length > 0) {
-                        let isFuture = dateStr > todayStr;
+                        let isFuture = dateStr >= todayStr;
                         let dayNet = 0.0;
                         
                         let hasHo=false, hasOff=false, hasVac=false;
