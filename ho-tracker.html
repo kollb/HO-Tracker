@@ -192,8 +192,10 @@
     
     /* === MOBILE LAYOUT === */
     @media (max-width: 768px) {
-        .bento-grid { grid-template-columns: 1fr; gap: 12px; margin-bottom: 16px;}
+        .bento-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 16px;}
         .bento-card { height: auto; }
+        .bento-card.budget-card { grid-column: span 2; }
+        
         .tl-header { display: none; }
         .tl-spine { left: 24px; top: 10px; bottom: 10px;}
         
@@ -299,10 +301,10 @@
                 <div class="bento-card budget-card glass-effect" style="border-top: 2px solid #0ea5e9 !important;">
                     <div class="d-flex justify-space-between align-center mb-1">
                         <div class="bento-label mb-0"><v-icon size="small" class="mr-2" color="#0ea5e9">mdi-laptop</v-icon> Home Office Budget</div>
-                        <div class="d-flex align-center rounded-pill px-2" style="height: 26px; background: rgba(0,0,0,0.25); border: 1px solid rgba(255,255,255,0.05);">
-                            <v-btn icon variant="plain" size="x-small" @click="changeMonth(-1)" style="width: 20px; height: 20px;"><v-icon size="small">mdi-chevron-left</v-icon></v-btn>
-                            <span class="font-weight-bold text-slate mx-1" style="font-size: 0.75rem;">[[ getGermanMonthName(currentMonth) ]] [[ currentYear ]]</span>
-                            <v-btn icon variant="plain" size="x-small" @click="changeMonth(1)" style="width: 20px; height: 20px;"><v-icon size="small">mdi-chevron-right</v-icon></v-btn>
+                        <div class="d-flex align-center rounded-pill px-1" style="height: 38px; background: rgba(0,0,0,0.25); border: 1px solid rgba(255,255,255,0.05);">
+                            <v-btn icon variant="plain" size="small" @click="changeMonth(-1)" style="width: 34px; height: 34px;"><v-icon size="small">mdi-chevron-left</v-icon></v-btn>
+                            <span class="font-weight-bold text-slate mx-2" style="font-size: 0.85rem;">[[ getGermanMonthName(currentMonth) ]] [[ currentYear ]]</span>
+                            <v-btn icon variant="plain" size="small" @click="changeMonth(1)" style="width: 34px; height: 34px;"><v-icon size="small">mdi-chevron-right</v-icon></v-btn>
                         </div>
                     </div>
                     
@@ -393,7 +395,7 @@
                                                 <input type="text" 
                                                        v-model="entry.glz_override" 
                                                        class="hover-input glz-input mono-num font-weight-bold"
-                                                       :class="(entry.glz_override !== null && entry.glz_override !== '') ? (entry.glz_override >= 0 ? 'text-mint' : 'text-error') : (item.glz_saldo >= 0 ? 'text-mint' : 'text-error')"
+                                                       :class="getGlzColor(entry.glz_override, item.glz_saldo)"
                                                        :placeholder="(item.glz_saldo > 0 ? '+' : '') + formatNum(item.glz_saldo)"
                                                        @input="entry.glz_override_source = 'manual'; debouncedSave(item.date)"
                                                        title="Klicken um Saldo manuell zu überschreiben">
@@ -438,7 +440,7 @@
                                                 <span class="cal-date-num mono-num">[[ item.day_num ]]</span>
                                                 <div v-if="item.total_net > 0 || item.main_type === 'planned'" class="text-caption text-slate mono-num">[[ formatNum(item.total_net) ]]h</div>
                                             </div>
-                                            <div v-if="item.is_holiday" class="text-error font-weight-bold mt-1 text-truncate" style="line-height: 1.1; font-size: 0.75rem !important;">[[ item.holiday_name ]]</div>
+                                            <div v-if="item.is_holiday" class="text-error font-weight-bold mt-1 text-truncate" style="line-height: 1.1; font-size: 0.75rem !important;" :title="item.holiday_name">[[ item.holiday_name ]]</div>
                                             <div class="mt-auto d-flex flex-column gap-1">
                                                 <div v-if="item.main_type" class="cal-pill" :class="'type-' + item.main_type">
                                                     [[ getTypeName(item.main_type, item.date) ]]
@@ -1577,11 +1579,12 @@
         },
         
         getGlzColor(override, saldo) {
+            let val = saldo;
             if (override !== null && override !== undefined && override !== '') {
-                const val = parseFloat(String(override).replace(',', '.'));
-                if (!isNaN(val)) return val >= 0 ? 'text-mint' : 'text-error';
+                const parsed = parseFloat(String(override).replace(',', '.'));
+                if (!isNaN(parsed)) val = parsed;
             }
-            return saldo >= 0 ? 'text-mint' : 'text-error';
+            return val < 0 ? 'text-error' : 'text-neutral';
         },
 
         getWeeklyColor(item) {
