@@ -361,6 +361,7 @@
                                                 <span class="tl-date-num" :class="{'text-primary': isToday(item.date)}">[[ item.day_num ]].</span>
                                                 <span class="tl-date-day">[[ getGermanDayShort(item.weekday_index) ]]</span>
                                                 <span v-if="item.is_holiday" class="tl-holiday-badge">[[ item.holiday_name ]]</span>
+                                                <v-icon v-if="item.total_net > 10" size="small" color="error" class="ml-1" title="Achtung: Tagesarbeitszeit > 10h (ArbZG)">mdi-alert-outline</v-icon>
                                             </template>
                                         </div>
 
@@ -438,7 +439,10 @@
                                              @click="openEditDialog(item)">
                                             <div class="d-flex justify-space-between align-start">
                                                 <span class="cal-date-num mono-num">[[ item.day_num ]]</span>
-                                                <div v-if="item.total_net > 0 || item.main_type === 'planned'" class="text-caption text-slate mono-num">[[ formatNum(item.total_net) ]]h</div>
+                                                <div v-if="item.total_net > 0 || item.main_type === 'planned'" class="text-caption d-flex align-center mono-num" :class="item.total_net > 10 ? 'text-error font-weight-bold' : 'text-slate'">
+                                                    [[ formatNum(item.total_net) ]]h
+                                                    <v-icon v-if="item.total_net > 10" size="12" class="ml-1" title="Achtung: > 10h (ArbZG)">mdi-alert</v-icon>
+                                                </div>
                                             </div>
                                             <div v-if="item.is_holiday" class="text-error font-weight-bold mt-1 text-truncate" style="line-height: 1.1; font-size: 0.75rem !important;" :title="item.holiday_name">[[ item.holiday_name ]]</div>
                                             <div class="mt-auto d-flex flex-column gap-1">
@@ -1483,7 +1487,7 @@
             this.saveSingleEntry(day.date); 
         },
         onEntryChange(day, entry) {
-            if(['home', 'office', 'dr'].includes(entry.type) && !entry.start) {
+            if(['home', 'office', 'dr', 'planned'].includes(entry.type) && !entry.start) {
                 entry.start = this.settings.default_start_time || '08:00';
                 if(day.entries.length === 1) {
                      const dailyTarget = this.calcDailyTarget;
@@ -1571,7 +1575,7 @@
         getGermanMonthName(m) { if(!m) return ""; const d = new Date(); d.setMonth(m-1); return d.toLocaleString('de-DE', { month: 'short' }); },
         isWeekend(day) { return day.weekday_index >= 5; },
         isToday(dateStr) { return dateStr === new Date().toISOString().split('T')[0]; },
-        needsTimeInput(type) { return ['home', 'office', 'dr', '', null].includes(type); },
+        needsTimeInput(type) { return ['home', 'office', 'dr', 'planned', '', null].includes(type); },
         
         getStatusIconColor(type, isClass=false) { 
             const map = { 'home': 'mint', 'office': 'indigo', 'planned': 'mint', 'sick': 'error', 'vacation': 'purple', 'dr': 'info' }; 
