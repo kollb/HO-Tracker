@@ -53,7 +53,7 @@
 
     .tl-header {
         display: grid;
-        grid-template-columns: 140px 140px 90px 90px 120px 1fr 40px;
+        grid-template-columns: 140px 140px 90px 90px 160px 1fr 40px;
         gap: 16px;
         padding-left: 48px; 
         padding-right: 16px;
@@ -70,7 +70,7 @@
     .tl-row {
         position: relative;
         display: grid;
-        grid-template-columns: 140px 140px 90px 90px 120px 1fr 40px;
+        grid-template-columns: 140px 140px 90px 90px 160px 1fr 40px;
         gap: 16px;
         align-items: center;
         min-height: 36px; 
@@ -126,7 +126,7 @@
     .hover-select:hover, .hover-select:focus { background: rgba(0,0,0,0.3); border-color: rgba(255,255,255,0.2); }
     .hover-select option { background: #1e293b; color: #f8fafc; }
 
-    .glz-input { width: 85px; text-align: right; cursor: pointer; padding: 0 4px !important; }
+    .glz-input { width: 65px; text-align: right; cursor: pointer; padding: 0 4px !important; }
     .glz-input::placeholder { color: inherit; opacity: 1; }
     .glz-input:focus::placeholder { opacity: 0.3; }
 
@@ -361,6 +361,7 @@
                                                 <span class="tl-date-num" :class="{'text-primary': isToday(item.date)}">[[ item.day_num ]].</span>
                                                 <span class="tl-date-day">[[ getGermanDayShort(item.weekday_index) ]]</span>
                                                 <span v-if="item.is_holiday" class="tl-holiday-badge">[[ item.holiday_name ]]</span>
+                                                <v-icon v-if="item.total_net > 10" size="small" color="error" class="ml-1" title="Achtung: Tagesarbeitszeit > 10h (ArbZG)">mdi-alert-outline</v-icon>
                                             </template>
                                         </div>
 
@@ -383,15 +384,16 @@
                                         <div class="tl-col-glz d-flex justify-md-end justify-start align-center pr-md-2" style="gap: 4px;">
                                             <template v-if="index === 0">
                                                 <div class="d-md-none text-caption text-slate font-weight-bold mr-1" style="line-height: 30px;">GLZ:</div>
-                                                <v-icon v-if="entry.glz_override !== null && entry.glz_override !== undefined" 
-                                                        size="14" 
-                                                        color="#0ea5e9" 
-                                                        class="cursor-pointer" 
-                                                        :title="entry.glz_override_source === 'manual' ? 'Manuell bearbeitet. Klick zum Entfernen.' : 'Aus PDF importiert. Klick zum Entfernen.'" 
-                                                        @click="entry.glz_override = null; entry.glz_override_source = null; debouncedSave(item.date)">
-                                                    [[ entry.glz_override_source === 'manual' ? 'mdi-account-edit-outline' : 'mdi-file-pdf-box' ]]
-                                                </v-icon>
                                                 
+                                                <div style="width: 48px; text-align: right;">
+                                                    <span v-if="item.day_delta !== 0 && item.day_delta !== undefined && !isFutureDay(item.date)" 
+                                                          class="mono-num font-weight-bold" 
+                                                          :class="item.day_delta > 0 ? 'text-mint' : 'text-error'"
+                                                          style="font-size: 0.85rem; letter-spacing: -0.5px;">
+                                                        [[ item.day_delta > 0 ? '+' : '' ]][[ formatNum(item.day_delta) ]]
+                                                    </span>
+                                                </div>
+
                                                 <input type="text" 
                                                        v-model="entry.glz_override" 
                                                        class="hover-input glz-input mono-num font-weight-bold"
@@ -399,7 +401,18 @@
                                                        :placeholder="(item.glz_saldo > 0 ? '+' : '') + formatNum(item.glz_saldo)"
                                                        @input="entry.glz_override_source = 'manual'; debouncedSave(item.date)"
                                                        title="Klicken um Saldo manuell zu überschreiben">
-                                                <span class="text-slate" style="font-size: 0.8rem;">h</span>
+                                                <span class="text-slate" style="font-size: 0.8rem; width: 12px;">h</span>
+
+                                                <div style="width: 20px; display: flex; justify-content: center;">
+                                                    <v-icon v-if="entry.glz_override !== null && entry.glz_override !== undefined" 
+                                                            size="14" 
+                                                            color="#0ea5e9" 
+                                                            class="cursor-pointer" 
+                                                            :title="entry.glz_override_source === 'manual' ? 'Manuell bearbeitet. Klick zum Entfernen.' : 'Aus PDF importiert. Klick zum Entfernen.'" 
+                                                            @click="entry.glz_override = null; entry.glz_override_source = null; debouncedSave(item.date)">
+                                                        [[ entry.glz_override_source === 'manual' ? 'mdi-account-edit-outline' : 'mdi-file-pdf-box' ]]
+                                                    </v-icon>
+                                                </div>
                                             </template>
                                         </div>
 
@@ -438,7 +451,10 @@
                                              @click="openEditDialog(item)">
                                             <div class="d-flex justify-space-between align-start">
                                                 <span class="cal-date-num mono-num">[[ item.day_num ]]</span>
-                                                <div v-if="item.total_net > 0 || item.main_type === 'planned'" class="text-caption text-slate mono-num">[[ formatNum(item.total_net) ]]h</div>
+                                                <div v-if="item.total_net > 0 || item.main_type === 'planned'" class="text-caption d-flex align-center mono-num" :class="item.total_net > 10 ? 'text-error font-weight-bold' : 'text-slate'">
+                                                    [[ formatNum(item.total_net) ]]h
+                                                    <v-icon v-if="item.total_net > 10" size="12" class="ml-1" title="Achtung: > 10h (ArbZG)">mdi-alert</v-icon>
+                                                </div>
                                             </div>
                                             <div v-if="item.is_holiday" class="text-error font-weight-bold mt-1 text-truncate" style="line-height: 1.1; font-size: 0.75rem !important;" :title="item.holiday_name">[[ item.holiday_name ]]</div>
                                             <div class="mt-auto d-flex flex-column gap-1">
@@ -1302,7 +1318,8 @@
                     row_type: 'day', date: dateStr, day_num: d, weekday_index: (dateObj.getDay()+6)%7, iso_week: getISOWeek(dateObj), 
                     is_holiday: (info.holiday_name && !info.is_workday), holiday_name: info.holiday_name, is_short_day: info.is_short_day, is_off_day: info.is_off_day,
                     daily_target: info.target, entries: dayEntries, total_net: dayNet, main_type: mainType, glz_saldo: running_glz, 
-                    glz_override: dayOverride, glz_override_source: dayOverrideSource
+                    glz_override: dayOverride, glz_override_source: dayOverrideSource,
+                    day_delta: parseFloat(dayDelta.toFixed(2))
                 });
                 
                 if((dateObj.getDay()+6)%7 === 6 || d === daysInMonth) {
@@ -1483,7 +1500,7 @@
             this.saveSingleEntry(day.date); 
         },
         onEntryChange(day, entry) {
-            if(['home', 'office', 'dr'].includes(entry.type) && !entry.start) {
+            if(['home', 'office', 'dr', 'planned'].includes(entry.type) && !entry.start) {
                 entry.start = this.settings.default_start_time || '08:00';
                 if(day.entries.length === 1) {
                      const dailyTarget = this.calcDailyTarget;
@@ -1571,7 +1588,7 @@
         getGermanMonthName(m) { if(!m) return ""; const d = new Date(); d.setMonth(m-1); return d.toLocaleString('de-DE', { month: 'short' }); },
         isWeekend(day) { return day.weekday_index >= 5; },
         isToday(dateStr) { return dateStr === new Date().toISOString().split('T')[0]; },
-        needsTimeInput(type) { return ['home', 'office', 'dr', '', null].includes(type); },
+        needsTimeInput(type) { return ['home', 'office', 'dr', 'planned', '', null].includes(type); },
         
         getStatusIconColor(type, isClass=false) { 
             const map = { 'home': 'mint', 'office': 'indigo', 'planned': 'mint', 'sick': 'error', 'vacation': 'purple', 'dr': 'info' }; 
